@@ -54,6 +54,12 @@ export default function Globe({
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const [hoveredCountry, setHoveredCountry] = useState<GeoJsonFeature | null>(null);
 
+  // Clear stale hover reference whenever the polygon set changes
+  // (e.g. when states appear/disappear at the zoom threshold)
+  useEffect(() => {
+    setHoveredCountry(null);
+  }, [polygons]);
+
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe) return;

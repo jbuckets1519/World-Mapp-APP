@@ -8,8 +8,10 @@ import type { GeoJsonFeature } from './types';
 // Map camera distance to a 1–100 zoom scale (closer = higher number)
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
-// Zoom level at which US states become visible (replaces the USA country polygon)
-const STATE_ZOOM_THRESHOLD = 85;
+// Hysteresis thresholds to prevent oscillation at the boundary.
+// States appear at 85, but don't disappear until zoom drops below 80.
+const STATE_ZOOM_ON = 85;
+const STATE_ZOOM_OFF = 80;
 
 function distanceToZoomLevel(distance: number): number {
   const clamped = Math.max(MIN_ZOOM_DISTANCE, Math.min(MAX_ZOOM_DISTANCE, distance));
@@ -44,34 +46,32 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const showStates = zoomLevel >= STATE_ZOOM_THRESHOLD;
+  // Hysteresis: once states are shown, keep them until zoom drops well below the threshold.
+  // This prevents the polygon array from thrashing back and forth at the boundary.
+  const [showStates, setShowStates] = useState(false);
+  useEffect(() => {
+    if (!showStates && zoomLevel >= STATE_ZOOM_ON) {
+      setShowStates(true);
+    } else if (showStates && zoomLevel < STATE_ZOOM_OFF) {
+      setShowStates(false);
+    }
+  }, [zoomLevel, showStates]);
 
-  // When zoomed in enough, swap the USA country polygon for individual state polygons
+  // All countries are ALWAYS visible. When zoomed in, states are layered on top.
+  // No countries are ever filtered out or hidden.
   const polygons = useMemo(() => {
     if (!showStates || usStates.length === 0) return countries;
-    // Remove the USA feature from the countries list and add states instead
-    const withoutUSA = countries.filter(
-      (f) => f.properties.ISO_A2 !== 'US' && f.properties.NAME !== 'United States of America',
-    );
-    return [...withoutUSA, ...usStates];
+    return [...countries, ...usStates];
   }, [countries, usStates, showStates]);
 
-  // If the user had the USA selected and we switch to state view, deselect
-  // (they can now click individual states instead)
+  // Deselect states when zooming out past the threshold
   const prevShowStatesRef = useRef(showStates);
   useEffect(() => {
     if (showStates !== prevShowStatesRef.current) {
       prevShowStatesRef.current = showStates;
-      if (selectedCountry) {
-        const isUSA =
-          selectedCountry.properties.ISO_A2 === 'US' ||
-          selectedCountry.properties.NAME === 'United States of America';
-        const isState = selectedCountry._isState;
-        // Deselect if we crossed the threshold with a USA/state selection
-        if ((showStates && isUSA) || (!showStates && isState)) {
-          setSelectedCountry(null);
-          setNoteText('');
-        }
+      if (!showStates && selectedCountry?._isState) {
+        setSelectedCountry(null);
+        setNoteText('');
       }
     }
   }, [showStates, selectedCountry]);

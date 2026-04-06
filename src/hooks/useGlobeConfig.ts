@@ -10,9 +10,8 @@ const US_STATES_URL =
   'https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json';
 
 /**
- * Fetches country + US state GeoJSON data.
- * Countries are required. States are optional — if they fail to load,
- * the globe still works without state boundaries.
+ * Fetches country + US state GeoJSON data and provides globe visual config.
+ * Keeps the Globe component free of data-fetching logic.
  */
 export function useGlobeConfig() {
   const [countries, setCountries] = useState<GeoJsonFeature[]>([]);
@@ -21,30 +20,23 @@ export function useGlobeConfig() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Countries are required
-    fetch(COUNTRIES_URL)
-      .then((res) => {
+    Promise.all([
+      fetch(COUNTRIES_URL).then((res) => {
         if (!res.ok) throw new Error(`Failed to fetch countries: ${res.status}`);
         return res.json() as Promise<GeoJsonData>;
-      })
-      .then((data) => {
-        setCountries(data.features);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-
-    // States are optional — load independently, don't block the globe
-    fetch(US_STATES_URL)
-      .then((res) => {
-        if (!res.ok) return null;
+      }),
+      fetch(US_STATES_URL).then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch US states: ${res.status}`);
         return res.json() as Promise<GeoJsonData>;
-      })
-      .then((data) => {
-        if (!data) return;
-        const normalizedStates = data.features.map((feat) => ({
+      }),
+    ])
+      .then(([countryData, stateData]) => {
+        setCountries(countryData.features);
+
+        // Normalize state features: copy lowercase `name` into `NAME` so the
+        // rest of the app can treat states and countries uniformly.
+        // Tag each with `_isState` so the globe can apply distinct styling.
+        const normalizedStates = stateData.features.map((feat) => ({
           ...feat,
           _isState: true as const,
           properties: {
@@ -53,11 +45,22 @@ export function useGlobeConfig() {
           },
         }));
         setUsStates(normalizedStates);
+        setLoading(false);
       })
-      .catch(() => {
-        // States failed to load — globe works without them
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
       });
   }, []);
 
-  return { countries, usStates, loading, error };
+  // Visual config for country polygons
+  const polygonConfig = {
+    capColor: () => 'rgba(100, 180, 255, 0.15)',
+    sideColor: () => 'rgba(100, 180, 255, 0.05)',
+    strokeColor: () => 'rgba(100, 180, 255, 0.4)',
+    label: (feat: GeoJsonFeature) => feat.properties.NAME,
+    altitude: 0.005,
+  };
+
+  return { countries, usStates, loading, error, polygonConfig };
 }

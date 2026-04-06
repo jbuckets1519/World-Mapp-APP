@@ -20,23 +20,30 @@ export function useGlobeConfig() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch(COUNTRIES_URL).then((res) => {
+    // Countries are required — if this fails, show an error
+    fetch(COUNTRIES_URL)
+      .then((res) => {
         if (!res.ok) throw new Error(`Failed to fetch countries: ${res.status}`);
         return res.json() as Promise<GeoJsonData>;
-      }),
-      fetch(US_STATES_URL).then((res) => {
-        if (!res.ok) throw new Error(`Failed to fetch US states: ${res.status}`);
-        return res.json() as Promise<GeoJsonData>;
-      }),
-    ])
-      .then(([countryData, stateData]) => {
-        setCountries(countryData.features);
+      })
+      .then((data) => {
+        setCountries(data.features);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
 
-        // Normalize state features: copy lowercase `name` into `NAME` so the
-        // rest of the app can treat states and countries uniformly.
-        // Tag each with `_isState` so the globe can apply distinct styling.
-        const normalizedStates = stateData.features.map((feat) => ({
+    // States are optional — if this fails, globe still works without them
+    fetch(US_STATES_URL)
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json() as Promise<GeoJsonData>;
+      })
+      .then((data) => {
+        if (!data) return;
+        const normalizedStates = data.features.map((feat) => ({
           ...feat,
           _isState: true as const,
           properties: {
@@ -45,11 +52,9 @@ export function useGlobeConfig() {
           },
         }));
         setUsStates(normalizedStates);
-        setLoading(false);
       })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
+      .catch(() => {
+        // States failed — globe works fine without them
       });
   }, []);
 

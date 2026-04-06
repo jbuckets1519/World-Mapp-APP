@@ -5,11 +5,8 @@ import { ZoomIndicator } from './components/ZoomIndicator';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import type { GeoJsonFeature } from './types';
 
-// Map camera distance to a 1–100 zoom scale (closer = higher number)
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
-// Hysteresis thresholds to prevent oscillation at the boundary.
-// States appear at 85, but don't disappear until zoom drops below 80.
 const STATE_ZOOM_ON = 85;
 const STATE_ZOOM_OFF = 80;
 
@@ -22,7 +19,7 @@ function distanceToZoomLevel(distance: number): number {
 export default function App() {
   const { countries, usStates, loading, error } = useGlobeConfig();
 
-  const [selectedCountry, setSelectedCountry] = useState<GeoJsonFeature | null>(null);
+  const [selectedPolygon, setSelectedPolygon] = useState<GeoJsonFeature | null>(null);
   const [noteText, setNoteText] = useState('');
   const [zoomLevel, setZoomLevel] = useState(1);
 
@@ -46,8 +43,7 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Hysteresis: once states are shown, keep them until zoom drops well below the threshold.
-  // This prevents the polygon array from thrashing back and forth at the boundary.
+  // Hysteresis to prevent oscillation at the zoom boundary
   const [showStates, setShowStates] = useState(false);
   useEffect(() => {
     if (!showStates && zoomLevel >= STATE_ZOOM_ON) {
@@ -57,40 +53,38 @@ export default function App() {
     }
   }, [zoomLevel, showStates]);
 
-  // All countries are ALWAYS visible. When zoomed in, states are layered on top.
-  // No countries are ever filtered out or hidden.
-  const polygons = useMemo(() => {
-    if (!showStates || usStates.length === 0) return countries;
+  // STABLE polygon array — computed once when data loads, never changes after.
+  // States are always included; their visibility is controlled by accessor
+  // functions inside Globe (transparent when below zoom threshold).
+  // This prevents react-globe.gl from running data transitions.
+  const allPolygons = useMemo(() => {
+    if (usStates.length === 0) return countries;
     return [...countries, ...usStates];
-  }, [countries, usStates, showStates]);
+  }, [countries, usStates]);
 
-  // Deselect states when zooming out past the threshold
-  const prevShowStatesRef = useRef(showStates);
+  // Deselect state polygons when zooming out past threshold
   useEffect(() => {
-    if (showStates !== prevShowStatesRef.current) {
-      prevShowStatesRef.current = showStates;
-      if (!showStates && selectedCountry?._isState) {
-        setSelectedCountry(null);
-        setNoteText('');
-      }
+    if (!showStates && selectedPolygon?._isState) {
+      setSelectedPolygon(null);
+      setNoteText('');
     }
-  }, [showStates, selectedCountry]);
+  }, [showStates, selectedPolygon]);
 
-  const handleCountryClick = useCallback(
-    (country: GeoJsonFeature) => {
-      if (country === selectedCountry) {
-        setSelectedCountry(null);
+  const handlePolygonClick = useCallback(
+    (polygon: GeoJsonFeature) => {
+      if (polygon === selectedPolygon) {
+        setSelectedPolygon(null);
         setNoteText('');
       } else {
-        setSelectedCountry(country);
+        setSelectedPolygon(polygon);
         setNoteText('');
       }
     },
-    [selectedCountry],
+    [selectedPolygon],
   );
 
   const handleClose = useCallback(() => {
-    setSelectedCountry(null);
+    setSelectedPolygon(null);
     setNoteText('');
   }, []);
 
@@ -122,17 +116,18 @@ export default function App() {
   return (
     <>
       <Globe
-        polygons={polygons}
-        selectedCountry={selectedCountry}
+        polygons={allPolygons}
+        showStates={showStates}
+        selectedPolygon={selectedPolygon}
         width={dimensions.width}
         height={dimensions.height}
-        onCountryClick={handleCountryClick}
+        onPolygonClick={handlePolygonClick}
         onZoomChange={handleZoomChange}
       />
       <ZoomIndicator level={zoomLevel} />
-      {selectedCountry && (
+      {selectedPolygon && (
         <CountryPanel
-          country={selectedCountry}
+          country={selectedPolygon}
           text={noteText}
           onTextChange={setNoteText}
           onClose={handleClose}

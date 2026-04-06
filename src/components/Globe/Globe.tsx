@@ -92,22 +92,43 @@ export default function Globe({
     return () => controls.removeEventListener('change', handler);
   }, [onZoomChange]);
 
+  // === DEBUG: Log cap color decisions when hoveredId is set (bug trigger) ===
+  const debugColorRef = useRef(false);
+
   const getCapColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
       const id = getPolygonId(f);
+      let color: string;
       if (f._isState) {
-        if (!showStates) return TRANSPARENT;
-        if (id === selectedId) return STATE_SELECTED_CAP;
-        if (id === hoveredId) return STATE_HOVER_CAP;
-        return STATE_CAP;
+        if (!showStates) { color = TRANSPARENT; }
+        else if (id === selectedId) { color = STATE_SELECTED_CAP; }
+        else if (id === hoveredId) { color = STATE_HOVER_CAP; }
+        else { color = STATE_CAP; }
+      } else {
+        if (id === selectedId) { color = COUNTRY_SELECTED_CAP; }
+        else if (id === hoveredId) { color = COUNTRY_HOVER_CAP; }
+        else { color = COUNTRY_CAP; }
       }
-      if (id === selectedId) return COUNTRY_SELECTED_CAP;
-      if (id === hoveredId) return COUNTRY_HOVER_CAP;
-      return COUNTRY_CAP;
+
+      // Log once per hover change when showStates is true
+      if (debugColorRef.current && showStates) {
+        console.log(`getCapColor: id="${id}" _isState=${f._isState} hoveredId="${hoveredId}" -> ${color}`);
+      }
+      return color;
     },
     [hoveredId, selectedId, showStates],
   );
+
+  // Flip debug logging on for one render cycle after hover changes
+  useEffect(() => {
+    if (showStates && hoveredId !== null) {
+      debugColorRef.current = true;
+      // Turn off after a tick so we only log one batch
+      const timer = setTimeout(() => { debugColorRef.current = false; }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [hoveredId, showStates]);
 
   const getSideColor = useCallback(
     (feat: object) => {
@@ -164,16 +185,24 @@ export default function Globe({
   const handleHover = useCallback(
     (feat: object | null) => {
       if (!feat) {
+        if (showStates) console.log('handleHover: null (mouse left polygon)');
         setHoveredId(null);
         return;
       }
       const f = feat as GeoJsonFeature;
+      const id = getPolygonId(f);
+
+      // === DEBUG: Log every hover event when states are visible ===
+      if (showStates) {
+        console.log(`handleHover: name="${f.properties.NAME}" _isState=${f._isState} id="${id}" showStates=${showStates}`, f.properties);
+      }
+
       // Ignore hover on invisible state polygons
       if (f._isState && !showStates) {
         setHoveredId(null);
         return;
       }
-      setHoveredId(getPolygonId(f));
+      setHoveredId(id);
     },
     [showStates],
   );

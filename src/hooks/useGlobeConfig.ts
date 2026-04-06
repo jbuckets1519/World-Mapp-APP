@@ -52,6 +52,28 @@ export function useGlobeConfig() {
           },
         }));
         setUsStates(normalizedStates);
+
+        // === DEBUG: Audit all state data at startup ===
+        console.group('=== STATE DATA AUDIT ===');
+        console.log(`Total states loaded: ${normalizedStates.length}`);
+        normalizedStates.forEach((s, i) => {
+          console.log(`[${i}] NAME="${s.properties.NAME}" _isState=${s._isState} keys=${Object.keys(s.properties).join(',')}`);
+        });
+        // Check for any state missing _isState
+        const missing = normalizedStates.filter((s) => !s._isState);
+        if (missing.length > 0) {
+          console.warn('STATES MISSING _isState FLAG:', missing.map((s) => s.properties.NAME));
+        }
+        // Check for Virginia specifically
+        const virginia = normalizedStates.find((s) => s.properties.NAME === 'Virginia');
+        if (virginia) {
+          console.log('Virginia full feature:', JSON.stringify(virginia.properties));
+          console.log('Virginia _isState:', virginia._isState);
+          console.log('Virginia geometry type:', virginia.geometry?.type);
+        } else {
+          console.warn('Virginia NOT FOUND in states!');
+        }
+        console.groupEnd();
       })
       .catch(() => {
         // States failed — globe works fine without them

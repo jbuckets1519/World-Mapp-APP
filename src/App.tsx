@@ -59,7 +59,17 @@ export default function App() {
   // STABLE polygon array — computed once when data loads, never changes after.
   const allPolygons = useMemo(() => {
     if (usStates.length === 0) return countries;
-    return [...countries, ...usStates];
+    const merged = [...countries, ...usStates];
+
+    // === DEBUG: Log polygon array composition ===
+    const countryCount = merged.filter((f) => !f._isState).length;
+    const stateCount = merged.filter((f) => f._isState).length;
+    console.log(`=== POLYGON ARRAY: ${merged.length} total (${countryCount} countries, ${stateCount} states) ===`);
+    // Check for USA country polygon
+    const usa = merged.find((f) => !f._isState && (f.properties.NAME === 'United States of America' || f.properties.ISO_A2 === 'US'));
+    console.log('USA country polygon present:', !!usa, usa ? `NAME="${usa.properties.NAME}"` : '');
+
+    return merged;
   }, [countries, usStates]);
 
   // Deselect state polygons when zooming out past threshold

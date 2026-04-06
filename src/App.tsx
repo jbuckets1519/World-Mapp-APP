@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Globe } from './components/Globe';
+import { getPolygonId } from './components/Globe/Globe';
 import { CountryPanel } from './components/CountryPanel';
 import { ZoomIndicator } from './components/ZoomIndicator';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
@@ -19,7 +20,9 @@ function distanceToZoomLevel(distance: number): number {
 export default function App() {
   const { countries, usStates, loading, error } = useGlobeConfig();
 
-  const [selectedPolygon, setSelectedPolygon] = useState<GeoJsonFeature | null>(null);
+  // Store selection as ID + feature (ID for Globe comparison, feature for panel display)
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
   const [noteText, setNoteText] = useState('');
   const [zoomLevel, setZoomLevel] = useState(1);
 
@@ -54,9 +57,6 @@ export default function App() {
   }, [zoomLevel, showStates]);
 
   // STABLE polygon array — computed once when data loads, never changes after.
-  // States are always included; their visibility is controlled by accessor
-  // functions inside Globe (transparent when below zoom threshold).
-  // This prevents react-globe.gl from running data transitions.
   const allPolygons = useMemo(() => {
     if (usStates.length === 0) return countries;
     return [...countries, ...usStates];
@@ -64,27 +64,33 @@ export default function App() {
 
   // Deselect state polygons when zooming out past threshold
   useEffect(() => {
-    if (!showStates && selectedPolygon?._isState) {
-      setSelectedPolygon(null);
+    if (!showStates && selectedFeature?._isState) {
+      setSelectedId(null);
+      setSelectedFeature(null);
       setNoteText('');
     }
-  }, [showStates, selectedPolygon]);
+  }, [showStates, selectedFeature]);
 
   const handlePolygonClick = useCallback(
     (polygon: GeoJsonFeature) => {
-      if (polygon === selectedPolygon) {
-        setSelectedPolygon(null);
+      const id = getPolygonId(polygon);
+      if (id === selectedId) {
+        // Clicking the same polygon deselects it
+        setSelectedId(null);
+        setSelectedFeature(null);
         setNoteText('');
       } else {
-        setSelectedPolygon(polygon);
+        setSelectedId(id);
+        setSelectedFeature(polygon);
         setNoteText('');
       }
     },
-    [selectedPolygon],
+    [selectedId],
   );
 
   const handleClose = useCallback(() => {
-    setSelectedPolygon(null);
+    setSelectedId(null);
+    setSelectedFeature(null);
     setNoteText('');
   }, []);
 
@@ -118,16 +124,16 @@ export default function App() {
       <Globe
         polygons={allPolygons}
         showStates={showStates}
-        selectedPolygon={selectedPolygon}
+        selectedId={selectedId}
         width={dimensions.width}
         height={dimensions.height}
         onPolygonClick={handlePolygonClick}
         onZoomChange={handleZoomChange}
       />
       <ZoomIndicator level={zoomLevel} />
-      {selectedPolygon && (
+      {selectedFeature && (
         <CountryPanel
-          country={selectedPolygon}
+          country={selectedFeature}
           text={noteText}
           onTextChange={setNoteText}
           onClose={handleClose}

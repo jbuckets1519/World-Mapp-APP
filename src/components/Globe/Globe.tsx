@@ -7,7 +7,8 @@ interface GlobeProps {
   polygons: GeoJsonFeature[];
   /** Whether state polygons should be visible (zoom >= threshold) */
   showStates: boolean;
-  selectedPolygon: GeoJsonFeature | null;
+  /** ID of the currently selected polygon (or null) */
+  selectedId: string | null;
   width?: number;
   height?: number;
   onPolygonClick?: (polygon: GeoJsonFeature) => void;
@@ -46,17 +47,26 @@ const STATE_ALT = 0.007;
 const STATE_HOVER_ALT = 0.022;
 const STATE_SELECTED_ALT = 0.037;
 
+/**
+ * Stable unique ID for each polygon. Uses NAME + a state/country prefix
+ * to avoid collisions (e.g. "Georgia" the country vs "Georgia" the state).
+ */
+export function getPolygonId(f: GeoJsonFeature): string {
+  const prefix = f._isState ? 'state' : 'country';
+  return `${prefix}:${f.properties.NAME}`;
+}
+
 export default function Globe({
   polygons,
   showStates,
-  selectedPolygon,
+  selectedId,
   width = window.innerWidth,
   height = window.innerHeight,
   onPolygonClick,
   onZoomChange,
 }: GlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
-  const [hovered, setHovered] = useState<GeoJsonFeature | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   useEffect(() => {
     const globe = globeRef.current;
@@ -82,41 +92,38 @@ export default function Globe({
     return () => controls.removeEventListener('change', handler);
   }, [onZoomChange]);
 
-  // All accessor functions include showStates in their dependency array.
-  // When showStates changes, new function refs are created, react-globe.gl
-  // re-evaluates all polygons. With polygonsTransitionDuration=0 this is
-  // instant and safe — no animated transition that could flash blue.
-
   const getCapColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
+      const id = getPolygonId(f);
       if (f._isState) {
         if (!showStates) return TRANSPARENT;
-        if (f === selectedPolygon) return STATE_SELECTED_CAP;
-        if (f === hovered) return STATE_HOVER_CAP;
+        if (id === selectedId) return STATE_SELECTED_CAP;
+        if (id === hoveredId) return STATE_HOVER_CAP;
         return STATE_CAP;
       }
-      if (f === selectedPolygon) return COUNTRY_SELECTED_CAP;
-      if (f === hovered) return COUNTRY_HOVER_CAP;
+      if (id === selectedId) return COUNTRY_SELECTED_CAP;
+      if (id === hoveredId) return COUNTRY_HOVER_CAP;
       return COUNTRY_CAP;
     },
-    [hovered, selectedPolygon, showStates],
+    [hoveredId, selectedId, showStates],
   );
 
   const getSideColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
+      const id = getPolygonId(f);
       if (f._isState) {
         if (!showStates) return TRANSPARENT;
-        if (f === selectedPolygon) return STATE_SELECTED_SIDE;
-        if (f === hovered) return STATE_HOVER_SIDE;
+        if (id === selectedId) return STATE_SELECTED_SIDE;
+        if (id === hoveredId) return STATE_HOVER_SIDE;
         return STATE_SIDE;
       }
-      if (f === selectedPolygon) return COUNTRY_SELECTED_SIDE;
-      if (f === hovered) return COUNTRY_HOVER_SIDE;
+      if (id === selectedId) return COUNTRY_SELECTED_SIDE;
+      if (id === hoveredId) return COUNTRY_HOVER_SIDE;
       return COUNTRY_SIDE;
     },
-    [hovered, selectedPolygon, showStates],
+    [hoveredId, selectedId, showStates],
   );
 
   const getStrokeColor = useCallback(
@@ -131,17 +138,18 @@ export default function Globe({
   const getAltitude = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
+      const id = getPolygonId(f);
       if (f._isState) {
         if (!showStates) return 0;
-        if (f === selectedPolygon) return STATE_SELECTED_ALT;
-        if (f === hovered) return STATE_HOVER_ALT;
+        if (id === selectedId) return STATE_SELECTED_ALT;
+        if (id === hoveredId) return STATE_HOVER_ALT;
         return STATE_ALT;
       }
-      if (f === selectedPolygon) return COUNTRY_SELECTED_ALT;
-      if (f === hovered) return COUNTRY_HOVER_ALT;
+      if (id === selectedId) return COUNTRY_SELECTED_ALT;
+      if (id === hoveredId) return COUNTRY_HOVER_ALT;
       return COUNTRY_ALT;
     },
-    [hovered, selectedPolygon, showStates],
+    [hoveredId, selectedId, showStates],
   );
 
   const getLabel = useCallback(
@@ -155,13 +163,17 @@ export default function Globe({
 
   const handleHover = useCallback(
     (feat: object | null) => {
-      const f = (feat as GeoJsonFeature) || null;
-      // Ignore hover on invisible state polygons
-      if (f?._isState && !showStates) {
-        setHovered(null);
+      if (!feat) {
+        setHoveredId(null);
         return;
       }
-      setHovered(f);
+      const f = feat as GeoJsonFeature;
+      // Ignore hover on invisible state polygons
+      if (f._isState && !showStates) {
+        setHoveredId(null);
+        return;
+      }
+      setHoveredId(getPolygonId(f));
     },
     [showStates],
   );
@@ -191,9 +203,6 @@ export default function Globe({
       polygonStrokeColor={getStrokeColor}
       polygonLabel={getLabel}
       polygonAltitude={getAltitude}
-      // CRITICAL: transition duration must be 0 to prevent the "solid blue"
-      // flash that happens when react-globe.gl animates color changes across
-      // all polygons simultaneously during hover state changes.
       polygonsTransitionDuration={0}
       onPolygonHover={handleHover}
       onPolygonClick={handleClick}

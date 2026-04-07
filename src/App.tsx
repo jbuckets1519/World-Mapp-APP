@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+
 import { Globe } from './components/Globe';
 import { getPolygonId } from './components/Globe/Globe';
 import { CountryPanel } from './components/CountryPanel';
@@ -6,6 +7,7 @@ import { ZoomIndicator } from './components/ZoomIndicator';
 import { AuthOverlay, UserIndicator } from './components/Auth';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
+import { useTravelData } from './hooks/useTravelData';
 import type { GeoJsonFeature } from './types';
 
 const MIN_ZOOM_DISTANCE = 120;
@@ -22,10 +24,17 @@ function distanceToZoomLevel(distance: number): number {
 export default function App() {
   const { countries, subdivisions, loading: globeLoading, error: globeError } = useGlobeConfig();
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
+  const {
+    visitedIds,
+    version: visitedVersion,
+    markVisited,
+    removeVisited,
+    updateNotes,
+    getPlace,
+  } = useTravelData(user?.id ?? null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
-  const [noteText, setNoteText] = useState('');
   const [zoomLevel, setZoomLevel] = useState(1);
 
   const rafRef = useRef(0);
@@ -73,7 +82,6 @@ export default function App() {
     if (!showStates && selectedFeature?._isState) {
       setSelectedId(null);
       setSelectedFeature(null);
-      setNoteText('');
     }
   }, [showStates, selectedFeature]);
 
@@ -83,11 +91,9 @@ export default function App() {
       if (id === selectedId) {
         setSelectedId(null);
         setSelectedFeature(null);
-        setNoteText('');
       } else {
         setSelectedId(id);
         setSelectedFeature(polygon);
-        setNoteText('');
       }
     },
     [selectedId],
@@ -96,8 +102,33 @@ export default function App() {
   const handleClose = useCallback(() => {
     setSelectedId(null);
     setSelectedFeature(null);
-    setNoteText('');
   }, []);
+
+  // Derive place type and ID from the selected feature for Supabase operations
+  const selectedPlaceType = selectedFeature?._isState ? 'state' : 'country';
+  const selectedPlaceId = selectedFeature ? getPolygonId(selectedFeature) : '';
+  const selectedPlaceName = selectedFeature?.properties.NAME ?? '';
+  const selectedVisitedData = selectedFeature
+    ? getPlace(selectedPlaceType, selectedPlaceId)
+    : undefined;
+
+  const handleMarkVisited = useCallback(async (notes: string): Promise<boolean> => {
+    console.log('[App] handleMarkVisited →', { selectedPlaceType, selectedPlaceId, selectedPlaceName, notes });
+    return markVisited(selectedPlaceType as 'country' | 'state', selectedPlaceId, selectedPlaceName, notes);
+  }, [markVisited, selectedPlaceType, selectedPlaceId, selectedPlaceName]);
+
+  const handleRemoveVisited = useCallback(async () => {
+    console.log('[App] handleRemoveVisited →', { selectedPlaceType, selectedPlaceId });
+    await removeVisited(selectedPlaceType, selectedPlaceId);
+  }, [removeVisited, selectedPlaceType, selectedPlaceId]);
+
+  const handleNotesChange = useCallback(
+    async (notes: string): Promise<boolean> => {
+      console.log('[App] handleNotesChange →', { selectedPlaceType, selectedPlaceId, notes });
+      return updateNotes(selectedPlaceType, selectedPlaceId, notes);
+    },
+    [updateNotes, selectedPlaceType, selectedPlaceId],
+  );
 
   if (globeError) {
     return (
@@ -129,6 +160,8 @@ export default function App() {
       <Globe
         polygons={polygons}
         selectedId={selectedId}
+        visitedIds={visitedIds}
+        visitedVersion={visitedVersion}
         width={dimensions.width}
         height={dimensions.height}
         onPolygonClick={handlePolygonClick}
@@ -136,7 +169,6 @@ export default function App() {
       />
       <ZoomIndicator level={zoomLevel} />
 
-      {/* Auth: show login overlay when logged out, user indicator when logged in */}
       {!user && <AuthOverlay onSignIn={signIn} onSignUp={signUp} />}
       {user && (
         <UserIndicator email={user.email ?? ''} onSignOut={signOut} />
@@ -145,8 +177,11 @@ export default function App() {
       {selectedFeature && (
         <CountryPanel
           country={selectedFeature}
-          text={noteText}
-          onTextChange={setNoteText}
+          visitedData={selectedVisitedData}
+          isLoggedIn={Boolean(user)}
+          onMarkVisited={handleMarkVisited}
+          onRemoveVisited={handleRemoveVisited}
+          onNotesChange={handleNotesChange}
           onClose={handleClose}
         />
       )}

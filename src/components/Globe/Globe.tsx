@@ -5,6 +5,10 @@ import type { GeoJsonFeature } from '../../types';
 interface GlobeProps {
   polygons: GeoJsonFeature[];
   selectedId: string | null;
+  /** Set of polygon IDs the user has marked as visited */
+  visitedIds?: Set<string>;
+  /** Increment this to force re-evaluation of visited colors */
+  visitedVersion?: number;
   width?: number;
   height?: number;
   onPolygonClick?: (polygon: GeoJsonFeature) => void;
@@ -28,9 +32,15 @@ const STATE_STROKE = 'rgba(255, 230, 130, 0.15)';
 const STATE_SELECTED_CAP = 'rgba(255, 230, 130, 0.25)';
 const STATE_SELECTED_SIDE = 'rgba(255, 230, 130, 0.1)';
 
+// --- Visited colors (warm orange) ---
+const VISITED_CAP = 'rgba(255, 160, 50, 0.35)';
+const VISITED_SIDE = 'rgba(255, 160, 50, 0.15)';
+const VISITED_STROKE = 'rgba(255, 160, 50, 0.5)';
+
 // --- Altitudes ---
 const COUNTRY_ALT = 0.005;
 const COUNTRY_SELECTED_ALT = 0.035;
+const VISITED_ALT = 0.008;
 const STATE_ALT = 0.006;
 const STATE_SELECTED_ALT = 0.037;
 
@@ -43,12 +53,18 @@ export function getPolygonId(f: GeoJsonFeature): string {
 export default function Globe({
   polygons,
   selectedId,
+  visitedIds,
+  visitedVersion = 0,
   width = window.innerWidth,
   height = window.innerHeight,
   onPolygonClick,
   onZoomChange,
 }: GlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
+  // Store visitedIds in a ref so accessor functions can read it
+  // without needing it as a dependency (avoids accessor recreation)
+  const visitedRef = useRef(visitedIds);
+  visitedRef.current = visitedIds;
 
   useEffect(() => {
     const globe = globeRef.current;
@@ -82,9 +98,10 @@ export default function Globe({
       const f = feat as GeoJsonFeature;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_CAP : COUNTRY_SELECTED_CAP;
+      if (visitedRef.current?.has(id)) return VISITED_CAP;
       return f._isState ? STATE_CAP : COUNTRY_CAP;
     },
-    [selectedId],
+    [selectedId, visitedVersion],
   );
 
   const getSideColor = useCallback(
@@ -92,23 +109,28 @@ export default function Globe({
       const f = feat as GeoJsonFeature;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_SIDE : COUNTRY_SELECTED_SIDE;
+      if (visitedRef.current?.has(id)) return VISITED_SIDE;
       return f._isState ? STATE_SIDE : COUNTRY_SIDE;
     },
-    [selectedId],
+    [selectedId, visitedVersion],
   );
 
   const getStrokeColor = useCallback((feat: object) => {
-    return (feat as GeoJsonFeature)._isState ? STATE_STROKE : COUNTRY_STROKE;
-  }, []);
+    const f = feat as GeoJsonFeature;
+    const id = getPolygonId(f);
+    if (visitedRef.current?.has(id)) return VISITED_STROKE;
+    return f._isState ? STATE_STROKE : COUNTRY_STROKE;
+  }, [visitedVersion]);
 
   const getAltitude = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_ALT : COUNTRY_SELECTED_ALT;
+      if (visitedRef.current?.has(id)) return VISITED_ALT;
       return f._isState ? STATE_ALT : COUNTRY_ALT;
     },
-    [selectedId],
+    [selectedId, visitedVersion],
   );
 
   const getLabel = useCallback((feat: object) => {

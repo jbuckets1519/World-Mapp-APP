@@ -72,101 +72,118 @@ export default function PhotoGallery({
   const hasNext = index < photos.length - 1;
 
   return (
-    <div style={styles.overlay}>
-      {/* Top bar */}
-      <div style={styles.topBar}>
-        <span style={styles.counter}>
-          {hasPhotos ? `${index + 1} / ${photos.length}` : 'No photos yet'}
-        </span>
-        <button style={styles.closeBtn} onClick={onClose} aria-label="Close gallery">
-          ✕
-        </button>
-      </div>
-
-      {/* Main content area */}
-      <div style={styles.stage}>
-        {loading ? (
-          <div style={styles.emptyText}>Loading photos...</div>
-        ) : hasPhotos && current ? (
-          <>
-            {/* Left arrow */}
-            <button
-              style={{ ...styles.arrowBtn, ...styles.arrowLeft, ...(hasPrev ? {} : styles.arrowDisabled) }}
-              onClick={goPrev}
-              disabled={!hasPrev}
-              aria-label="Previous photo"
-            >
-              ‹
-            </button>
-
-            {/* Photo */}
-            <img
-              src={current.url}
-              alt={current.file_name}
-              style={styles.photo}
-            />
-
-            {/* Right arrow */}
-            <button
-              style={{ ...styles.arrowBtn, ...styles.arrowRight, ...(hasNext ? {} : styles.arrowDisabled) }}
-              onClick={goNext}
-              disabled={!hasNext}
-              aria-label="Next photo"
-            >
-              ›
-            </button>
-          </>
-        ) : (
-          <div style={styles.emptyText}>
-            No photos yet — add some below
-          </div>
-        )}
-      </div>
-
-      {/* Bottom bar with actions */}
-      <div style={styles.bottomBar}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
-        />
-        <button
-          style={styles.actionBtn}
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
-          {uploading ? 'Uploading...' : '+ Add Photos'}
-        </button>
-
-        {hasPhotos && current && (
-          <button
-            style={{ ...styles.actionBtn, ...styles.deleteBtn }}
-            onClick={handleDelete}
-            disabled={deletingId === current.id}
-          >
-            {deletingId === current.id ? 'Deleting...' : 'Delete Photo'}
+    <div style={styles.backdrop} onClick={onClose}>
+      {/* Modal card — ~3x the panel width, centered */}
+      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        {/* Top bar */}
+        <div style={styles.topBar}>
+          <span style={styles.counter}>
+            {hasPhotos ? `${index + 1} / ${photos.length}` : 'No photos yet'}
+          </span>
+          <button style={styles.closeBtn} onClick={onClose} aria-label="Close gallery">
+            ✕
           </button>
-        )}
+        </div>
+
+        {/* Photo area */}
+        <div style={styles.stage}>
+          {loading ? (
+            <div style={styles.emptyText}>Loading photos...</div>
+          ) : hasPhotos && current ? (
+            <>
+              <button
+                style={{ ...styles.arrowBtn, ...styles.arrowLeft, ...(hasPrev ? {} : styles.arrowDisabled) }}
+                onClick={goPrev}
+                disabled={!hasPrev}
+                aria-label="Previous photo"
+              >
+                ‹
+              </button>
+
+              <img
+                src={current.url}
+                alt={current.file_name}
+                style={styles.photo}
+              />
+
+              <button
+                style={{ ...styles.arrowBtn, ...styles.arrowRight, ...(hasNext ? {} : styles.arrowDisabled) }}
+                onClick={goNext}
+                disabled={!hasNext}
+                aria-label="Next photo"
+              >
+                ›
+              </button>
+            </>
+          ) : (
+            <div style={styles.emptyText}>
+              No photos yet — add some below
+            </div>
+          )}
+        </div>
+
+        {/* Bottom actions */}
+        <div style={styles.bottomBar}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleFileSelect}
+          />
+          <button
+            style={styles.actionBtn}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? 'Uploading...' : '+ Add Photos'}
+          </button>
+
+          {hasPhotos && current && (
+            <button
+              style={{ ...styles.actionBtn, ...styles.deleteBtnStyle }}
+              onClick={handleDelete}
+              disabled={deletingId === current.id}
+            >
+              {deletingId === current.id ? 'Deleting...' : 'Delete Photo'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
+// Panel is 320px, so ~3x = 960px
+const MODAL_WIDTH = 960;
+const MODAL_HEIGHT = 680;
+
 const styles: Record<string, React.CSSProperties> = {
-  overlay: {
+  backdrop: {
     position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'rgba(5, 5, 15, 0.95)',
-    backdropFilter: 'blur(8px)',
+    background: 'rgba(0, 0, 0, 0.75)',
+    backdropFilter: 'blur(6px)',
     zIndex: 50,
     display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modal: {
+    width: `${MODAL_WIDTH}px`,
+    maxWidth: 'calc(100vw - 2rem)',
+    height: `${MODAL_HEIGHT}px`,
+    maxHeight: 'calc(100vh - 2rem)',
+    background: 'rgba(15, 15, 25, 0.95)',
+    border: '1px solid rgba(100, 180, 255, 0.15)',
+    borderRadius: '14px',
+    display: 'flex',
     flexDirection: 'column',
+    overflow: 'hidden',
   },
 
   // -- Top bar --
@@ -174,21 +191,21 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '1rem 1.25rem',
+    padding: '0.75rem 1rem',
     flexShrink: 0,
   },
   counter: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: '0.85rem',
+    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: '0.8rem',
   },
   closeBtn: {
     background: 'rgba(255, 255, 255, 0.08)',
     border: 'none',
     color: '#fff',
-    fontSize: '1.4rem',
+    fontSize: '1.2rem',
     cursor: 'pointer',
-    width: '36px',
-    height: '36px',
+    width: '32px',
+    height: '32px',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -203,7 +220,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    padding: '0 3.5rem',
+    padding: '0 3rem',
     minHeight: 0,
   },
   photo: {
@@ -215,7 +232,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   emptyText: {
     color: 'rgba(255, 255, 255, 0.3)',
-    fontSize: '0.95rem',
+    fontSize: '0.9rem',
   },
 
   // -- Arrow buttons --
@@ -226,10 +243,10 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(255, 255, 255, 0.08)',
     border: 'none',
     color: '#fff',
-    fontSize: '2rem',
+    fontSize: '1.6rem',
     cursor: 'pointer',
-    width: '44px',
-    height: '44px',
+    width: '38px',
+    height: '38px',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -237,8 +254,8 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1,
     transition: 'background 0.15s',
   },
-  arrowLeft: { left: '0.5rem' },
-  arrowRight: { right: '0.5rem' },
+  arrowLeft: { left: '0.4rem' },
+  arrowRight: { right: '0.4rem' },
   arrowDisabled: {
     opacity: 0.2,
     cursor: 'default',
@@ -249,20 +266,20 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     justifyContent: 'center',
     gap: '0.75rem',
-    padding: '1rem 1.25rem',
+    padding: '0.75rem 1rem',
     flexShrink: 0,
   },
   actionBtn: {
-    padding: '0.55rem 1.25rem',
+    padding: '0.5rem 1.1rem',
     background: 'rgba(100, 180, 255, 0.12)',
     border: '1px solid rgba(100, 180, 255, 0.25)',
     borderRadius: '8px',
     color: 'rgba(100, 180, 255, 0.85)',
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
     cursor: 'pointer',
     fontFamily: 'inherit',
   },
-  deleteBtn: {
+  deleteBtnStyle: {
     background: 'rgba(255, 80, 80, 0.1)',
     borderColor: 'rgba(255, 80, 80, 0.25)',
     color: 'rgba(255, 80, 80, 0.8)',

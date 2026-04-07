@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GeoJsonFeature } from '../../types';
 import type { VisitedPlace } from '../../hooks/useTravelData';
+import type { TravelPhoto } from '../../hooks/useTravelPhotos';
+import PhotoGallery from './PhotoGallery';
 
 interface CountryPanelProps {
   country: GeoJsonFeature;
@@ -10,6 +12,12 @@ interface CountryPanelProps {
   onRemoveVisited: () => void;
   onNotesChange: (notes: string) => Promise<boolean>;
   onClose: () => void;
+  // Photo props
+  photos: TravelPhoto[];
+  photosLoading: boolean;
+  photosUploading: boolean;
+  onPhotoUpload: (file: File) => Promise<boolean>;
+  onPhotoDelete: (photoId: string, filePath: string) => Promise<boolean>;
 }
 
 export default function CountryPanel({
@@ -20,6 +28,11 @@ export default function CountryPanel({
   onRemoveVisited,
   onNotesChange,
   onClose,
+  photos,
+  photosLoading,
+  photosUploading,
+  onPhotoUpload,
+  onPhotoDelete,
 }: CountryPanelProps) {
   const isVisited = Boolean(visitedData);
   const [notes, setNotes] = useState(visitedData?.notes ?? '');
@@ -124,6 +137,15 @@ export default function CountryPanel({
                   ? 'Save failed — check console'
                   : 'Save Notes'}
           </button>
+
+          {/* Photo gallery */}
+          <PhotoGallery
+            photos={photos}
+            loading={photosLoading}
+            uploading={photosUploading}
+            onUpload={onPhotoUpload}
+            onDelete={onPhotoDelete}
+          />
         </>
       ) : (
         <p style={styles.loginHint}>Log in to save visited places and notes</p>
@@ -139,6 +161,8 @@ const styles: Record<string, React.CSSProperties> = {
     right: '1.5rem',
     width: '320px',
     maxWidth: 'calc(100vw - 2rem)',
+    maxHeight: 'calc(100vh - 3rem)',
+    overflowY: 'auto' as const,
     background: 'rgba(15, 15, 25, 0.92)',
     backdropFilter: 'blur(12px)',
     border: '1px solid rgba(100, 180, 255, 0.2)',

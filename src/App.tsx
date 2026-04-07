@@ -8,6 +8,7 @@ import { AuthOverlay, UserIndicator } from './components/Auth';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
+import { useTravelPhotos } from './hooks/useTravelPhotos';
 import type { GeoJsonFeature } from './types';
 
 const MIN_ZOOM_DISTANCE = 120;
@@ -32,6 +33,15 @@ export default function App() {
     updateNotes,
     getPlace,
   } = useTravelData(user?.id ?? null);
+
+  const {
+    photos,
+    loading: photosLoading,
+    uploading: photosUploading,
+    loadPhotos,
+    uploadPhoto,
+    deletePhoto,
+  } = useTravelPhotos(user?.id ?? null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
@@ -112,6 +122,18 @@ export default function App() {
     ? getPlace(selectedPlaceType, selectedPlaceId)
     : undefined;
 
+  // Load photos whenever the selected place changes
+  useEffect(() => {
+    if (selectedFeature && user) {
+      loadPhotos(selectedPlaceType, selectedPlaceId);
+    }
+  }, [selectedFeature, user, selectedPlaceType, selectedPlaceId, loadPhotos]);
+
+  const handlePhotoUpload = useCallback(
+    (file: File) => uploadPhoto(selectedPlaceType, selectedPlaceId, file),
+    [uploadPhoto, selectedPlaceType, selectedPlaceId],
+  );
+
   const handleMarkVisited = useCallback(async (notes: string): Promise<boolean> => {
     console.log('[App] handleMarkVisited →', { selectedPlaceType, selectedPlaceId, selectedPlaceName, notes });
     return markVisited(selectedPlaceType as 'country' | 'state', selectedPlaceId, selectedPlaceName, notes);
@@ -183,6 +205,11 @@ export default function App() {
           onRemoveVisited={handleRemoveVisited}
           onNotesChange={handleNotesChange}
           onClose={handleClose}
+          photos={photos}
+          photosLoading={photosLoading}
+          photosUploading={photosUploading}
+          onPhotoUpload={handlePhotoUpload}
+          onPhotoDelete={deletePhoto}
         />
       )}
     </>

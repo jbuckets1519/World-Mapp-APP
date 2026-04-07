@@ -8,8 +8,6 @@ import type { GeoJsonFeature } from './types';
 
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
-const STATE_ZOOM_ON = 85;
-const STATE_ZOOM_OFF = 80;
 
 function distanceToZoomLevel(distance: number): number {
   const clamped = Math.max(MIN_ZOOM_DISTANCE, Math.min(MAX_ZOOM_DISTANCE, distance));
@@ -20,7 +18,6 @@ function distanceToZoomLevel(distance: number): number {
 export default function App() {
   const { countries, usStates, loading, error } = useGlobeConfig();
 
-  // Store selection as ID + feature (ID for Globe comparison, feature for panel display)
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -46,46 +43,17 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Hysteresis to prevent oscillation at the zoom boundary
-  const [showStates, setShowStates] = useState(false);
-  useEffect(() => {
-    if (!showStates && zoomLevel >= STATE_ZOOM_ON) {
-      setShowStates(true);
-    } else if (showStates && zoomLevel < STATE_ZOOM_OFF) {
-      setShowStates(false);
-    }
-  }, [zoomLevel, showStates]);
-
-  // STABLE polygon array — computed once when data loads, never changes after.
+  // Stable polygon array — built once when data loads
   const allPolygons = useMemo(() => {
+    if (countries.length === 0) return [];
     if (usStates.length === 0) return countries;
-    const merged = [...countries, ...usStates];
-
-    // === DEBUG: Log polygon array composition ===
-    const countryCount = merged.filter((f) => !f._isState).length;
-    const stateCount = merged.filter((f) => f._isState).length;
-    console.log(`=== POLYGON ARRAY: ${merged.length} total (${countryCount} countries, ${stateCount} states) ===`);
-    // Check for USA country polygon
-    const usa = merged.find((f) => !f._isState && (f.properties.NAME === 'United States of America' || f.properties.ISO_A2 === 'US'));
-    console.log('USA country polygon present:', !!usa, usa ? `NAME="${usa.properties.NAME}"` : '');
-
-    return merged;
+    return [...countries, ...usStates];
   }, [countries, usStates]);
-
-  // Deselect state polygons when zooming out past threshold
-  useEffect(() => {
-    if (!showStates && selectedFeature?._isState) {
-      setSelectedId(null);
-      setSelectedFeature(null);
-      setNoteText('');
-    }
-  }, [showStates, selectedFeature]);
 
   const handlePolygonClick = useCallback(
     (polygon: GeoJsonFeature) => {
       const id = getPolygonId(polygon);
       if (id === selectedId) {
-        // Clicking the same polygon deselects it
         setSelectedId(null);
         setSelectedFeature(null);
         setNoteText('');
@@ -133,7 +101,6 @@ export default function App() {
     <>
       <Globe
         polygons={allPolygons}
-        showStates={showStates}
         selectedId={selectedId}
         width={dimensions.width}
         height={dimensions.height}

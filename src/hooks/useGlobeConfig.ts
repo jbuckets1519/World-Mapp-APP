@@ -43,37 +43,43 @@ export function useGlobeConfig() {
       })
       .then((data) => {
         if (!data) return;
-        const normalizedStates = data.features.map((feat) => ({
-          ...feat,
-          _isState: true as const,
-          properties: {
-            ...feat.properties,
-            NAME: (feat.properties.name as string) ?? feat.properties.NAME,
-          },
-        }));
-        setUsStates(normalizedStates);
-
-        // === DEBUG: Audit all state data at startup ===
-        console.group('=== STATE DATA AUDIT ===');
-        console.log(`Total states loaded: ${normalizedStates.length}`);
-        normalizedStates.forEach((s, i) => {
-          console.log(`[${i}] NAME="${s.properties.NAME}" _isState=${s._isState} keys=${Object.keys(s.properties).join(',')}`);
-        });
-        // Check for any state missing _isState
-        const missing = normalizedStates.filter((s) => !s._isState);
-        if (missing.length > 0) {
-          console.warn('STATES MISSING _isState FLAG:', missing.map((s) => s.properties.NAME));
-        }
-        // Check for Virginia specifically
-        const virginia = normalizedStates.find((s) => s.properties.NAME === 'Virginia');
-        if (virginia) {
-          console.log('Virginia full feature:', JSON.stringify(virginia.properties));
-          console.log('Virginia _isState:', virginia._isState);
-          console.log('Virginia geometry type:', virginia.geometry?.type);
-        } else {
-          console.warn('Virginia NOT FOUND in states!');
-        }
-        console.groupEnd();
+        const normalizedStates = data.features
+          .filter((feat) => {
+            // Remove Puerto Rico (not a state, outside continental US)
+            const name = (feat.properties.name as string) ?? '';
+            return name !== 'Puerto Rico';
+          })
+          .map((feat) => {
+            const name = (feat.properties.name as string) ?? feat.properties.NAME;
+            const result = {
+              ...feat,
+              _isState: true as const,
+              properties: {
+                ...feat.properties,
+                NAME: name,
+              },
+            };
+            // Fix Virginia: its MultiPolygon has 3 parts and react-globe.gl's
+            // raycasting detects it across the entire globe due to the gaps
+            // between the Eastern Shore and mainland. Keep only the mainland
+            // polygon (the largest part, index 2).
+            if (name === 'Virginia' && feat.geometry.type === 'MultiPolygon') {
+              const coords = feat.geometry.coordinates as number[][][][];
+              // Find the largest polygon by point count (the mainland)
+              let largestIdx = 0;
+              let largestLen = 0;
+              coords.forEach((poly, i) => {
+                const len = poly[0]?.length ?? 0;
+                if (len > largestLen) { largestLen = len; largestIdx = i; }
+              });
+              result.geometry = {
+                type: 'Polygon',
+                coordinates: coords[largestIdx],
+              };
+            }
+            return result;
+          });
+        setUsStates(normalizedStates as GeoJsonFeature[]);
       })
       .catch(() => {
         // States failed — globe works fine without them

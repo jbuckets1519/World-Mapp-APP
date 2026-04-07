@@ -39,13 +39,6 @@ export function getPolygonId(f: GeoJsonFeature): string {
   return `${prefix}:${f.properties.NAME}`;
 }
 
-/** The USA country polygon is always transparent because state polygons cover it */
-function isUSA(f: GeoJsonFeature): boolean {
-  return !f._isState && (
-    f.properties.ISO_A2 === 'US' ||
-    f.properties.NAME === 'United States of America'
-  );
-}
 
 export default function Globe({
   polygons,
@@ -87,7 +80,6 @@ export default function Globe({
   const getCapColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
-      if (isUSA(f)) return 'rgba(0,0,0,0)';
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_CAP : COUNTRY_SELECTED_CAP;
       return f._isState ? STATE_CAP : COUNTRY_CAP;
@@ -98,7 +90,6 @@ export default function Globe({
   const getSideColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
-      if (isUSA(f)) return 'rgba(0,0,0,0)';
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_SIDE : COUNTRY_SELECTED_SIDE;
       return f._isState ? STATE_SIDE : COUNTRY_SIDE;
@@ -107,9 +98,7 @@ export default function Globe({
   );
 
   const getStrokeColor = useCallback((feat: object) => {
-    const f = feat as GeoJsonFeature;
-    if (isUSA(f)) return 'rgba(0,0,0,0)';
-    return f._isState ? STATE_STROKE : COUNTRY_STROKE;
+    return (feat as GeoJsonFeature)._isState ? STATE_STROKE : COUNTRY_STROKE;
   }, []);
 
   const getAltitude = useCallback(

@@ -8,6 +8,9 @@ import type { GeoJsonFeature } from './types';
 
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
+// States fade in at 85, fade out at 80 (hysteresis prevents flicker)
+const STATE_ZOOM_ON = 85;
+const STATE_ZOOM_OFF = 80;
 
 function distanceToZoomLevel(distance: number): number {
   const clamped = Math.max(MIN_ZOOM_DISTANCE, Math.min(MAX_ZOOM_DISTANCE, distance));
@@ -43,12 +46,40 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Stable polygon array — built once when data loads
-  const allPolygons = useMemo(() => {
+  // Hysteresis toggle — states appear at 85, disappear at 80
+  const [showStates, setShowStates] = useState(false);
+  useEffect(() => {
+    if (!showStates && zoomLevel >= STATE_ZOOM_ON) {
+      setShowStates(true);
+    } else if (showStates && zoomLevel < STATE_ZOOM_OFF) {
+      setShowStates(false);
+    }
+  }, [zoomLevel, showStates]);
+
+  // Two pre-computed stable arrays. Only the reference switches —
+  // no items are ever removed from either array, no filtering.
+  const countriesOnly = useMemo(() => {
+    return countries.length > 0 ? countries : [];
+  }, [countries]);
+
+  const withStates = useMemo(() => {
     if (countries.length === 0) return [];
     if (usStates.length === 0) return countries;
     return [...countries, ...usStates];
   }, [countries, usStates]);
+
+  // Switch data based on zoom. Globe's accessor functions don't change —
+  // they handle both countries and states with static logic.
+  const polygons = showStates ? withStates : countriesOnly;
+
+  // Deselect state when zooming out
+  useEffect(() => {
+    if (!showStates && selectedFeature?._isState) {
+      setSelectedId(null);
+      setSelectedFeature(null);
+      setNoteText('');
+    }
+  }, [showStates, selectedFeature]);
 
   const handlePolygonClick = useCallback(
     (polygon: GeoJsonFeature) => {
@@ -100,7 +131,7 @@ export default function App() {
   return (
     <>
       <Globe
-        polygons={allPolygons}
+        polygons={polygons}
         selectedId={selectedId}
         width={dimensions.width}
         height={dimensions.height}

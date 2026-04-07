@@ -19,7 +19,7 @@ function distanceToZoomLevel(distance: number): number {
 }
 
 export default function App() {
-  const { countries, usStates, loading, error } = useGlobeConfig();
+  const { countries, subdivisions, loading, error } = useGlobeConfig();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
@@ -64,9 +64,9 @@ export default function App() {
 
   const withStates = useMemo(() => {
     if (countries.length === 0) return [];
-    if (usStates.length === 0) return countries;
-    return [...countries, ...usStates];
-  }, [countries, usStates]);
+    if (subdivisions.length === 0) return countries;
+    return [...countries, ...subdivisions];
+  }, [countries, subdivisions]);
 
   // Switch data based on zoom. Globe's accessor functions don't change —
   // they handle both countries and states with static logic.

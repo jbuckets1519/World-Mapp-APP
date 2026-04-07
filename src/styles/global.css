@@ -24,3 +24,9 @@ body,
   /* Prevent pull-to-refresh on mobile */
   overscroll-behavior: none;
 }
+
+/* Photo viewer fade-in when navigating between photos */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

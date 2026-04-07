@@ -3,12 +3,13 @@ import { Globe } from './components/Globe';
 import { getPolygonId } from './components/Globe/Globe';
 import { CountryPanel } from './components/CountryPanel';
 import { ZoomIndicator } from './components/ZoomIndicator';
+import { AuthOverlay, UserIndicator } from './components/Auth';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
+import { useAuth } from './hooks/useAuth';
 import type { GeoJsonFeature } from './types';
 
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
-// States fade in at 85, fade out at 80 (hysteresis prevents flicker)
 const STATE_ZOOM_ON = 85;
 const STATE_ZOOM_OFF = 80;
 
@@ -19,7 +20,8 @@ function distanceToZoomLevel(distance: number): number {
 }
 
 export default function App() {
-  const { countries, subdivisions, loading, error } = useGlobeConfig();
+  const { countries, subdivisions, loading: globeLoading, error: globeError } = useGlobeConfig();
+  const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
@@ -46,7 +48,6 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Hysteresis toggle — states appear at 85, disappear at 80
   const [showStates, setShowStates] = useState(false);
   useEffect(() => {
     if (!showStates && zoomLevel >= STATE_ZOOM_ON) {
@@ -56,8 +57,6 @@ export default function App() {
     }
   }, [zoomLevel, showStates]);
 
-  // Two pre-computed stable arrays. Only the reference switches —
-  // no items are ever removed from either array, no filtering.
   const countriesOnly = useMemo(() => {
     return countries.length > 0 ? countries : [];
   }, [countries]);
@@ -68,11 +67,8 @@ export default function App() {
     return [...countries, ...subdivisions];
   }, [countries, subdivisions]);
 
-  // Switch data based on zoom. Globe's accessor functions don't change —
-  // they handle both countries and states with static logic.
   const polygons = showStates ? withStates : countriesOnly;
 
-  // Deselect state when zooming out
   useEffect(() => {
     if (!showStates && selectedFeature?._isState) {
       setSelectedId(null);
@@ -103,15 +99,15 @@ export default function App() {
     setNoteText('');
   }, []);
 
-  if (error) {
+  if (globeError) {
     return (
       <div style={{ color: '#ff6b6b', padding: '2rem', textAlign: 'center' }}>
-        Failed to load globe data: {error}
+        Failed to load globe data: {globeError}
       </div>
     );
   }
 
-  if (loading) {
+  if (globeLoading || authLoading) {
     return (
       <div
         style={{
@@ -123,7 +119,7 @@ export default function App() {
           fontSize: '1.2rem',
         }}
       >
-        Loading globe...
+        Loading...
       </div>
     );
   }
@@ -139,6 +135,13 @@ export default function App() {
         onZoomChange={handleZoomChange}
       />
       <ZoomIndicator level={zoomLevel} />
+
+      {/* Auth: show login overlay when logged out, user indicator when logged in */}
+      {!user && <AuthOverlay onSignIn={signIn} onSignUp={signUp} />}
+      {user && (
+        <UserIndicator email={user.email ?? ''} onSignOut={signOut} />
+      )}
+
       {selectedFeature && (
         <CountryPanel
           country={selectedFeature}

@@ -37,6 +37,7 @@ export default function CountryPanel({
   const isVisited = Boolean(visitedData);
   const [notes, setNotes] = useState(visitedData?.notes ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [showGallery, setShowGallery] = useState(false);
   const notesRef = useRef(notes);
   notesRef.current = notes;
 
@@ -49,6 +50,7 @@ export default function CountryPanel({
     });
     setNotes(visitedData?.notes ?? '');
     setSaveStatus('idle');
+    setShowGallery(false);
   }, [visitedData, country.properties.NAME, isVisited]);
 
   const handleMarkVisited = async () => {
@@ -138,14 +140,25 @@ export default function CountryPanel({
                   : 'Save Notes'}
           </button>
 
-          {/* Photo gallery */}
-          <PhotoGallery
-            photos={photos}
-            loading={photosLoading}
-            uploading={photosUploading}
-            onUpload={onPhotoUpload}
-            onDelete={onPhotoDelete}
-          />
+          {/* Photo gallery trigger */}
+          <button
+            style={styles.galleryBtn}
+            onClick={() => setShowGallery(true)}
+          >
+            Photo Gallery{photos.length > 0 ? ` (${photos.length})` : ''}
+          </button>
+
+          {/* Gallery modal */}
+          {showGallery && (
+            <PhotoGallery
+              photos={photos}
+              loading={photosLoading}
+              uploading={photosUploading}
+              onUpload={onPhotoUpload}
+              onDelete={onPhotoDelete}
+              onClose={() => setShowGallery(false)}
+            />
+          )}
         </>
       ) : (
         <p style={styles.loginHint}>Log in to save visited places and notes</p>
@@ -244,6 +257,18 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(255, 80, 80, 0.15)',
     borderColor: 'rgba(255, 80, 80, 0.35)',
     color: 'rgba(255, 80, 80, 0.9)',
+  },
+  galleryBtn: {
+    width: '100%',
+    padding: '0.55rem',
+    marginTop: '0.5rem',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(100, 180, 255, 0.2)',
+    borderRadius: '8px',
+    color: 'rgba(100, 180, 255, 0.7)',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
   loginHint: {
     color: 'rgba(255, 255, 255, 0.4)',

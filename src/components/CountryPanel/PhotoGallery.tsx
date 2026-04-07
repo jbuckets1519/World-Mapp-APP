@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import type { TravelPhoto } from '../../hooks/useTravelPhotos';
 
 interface PhotoGalleryProps {
+  countryName: string;
   photos: TravelPhoto[];
   loading: boolean;
   uploading: boolean;
@@ -11,11 +12,12 @@ interface PhotoGalleryProps {
 }
 
 /**
- * Full-screen modal gallery. Shows a thumbnail grid of all photos.
- * Clicking a thumbnail opens the photo viewer overlay (one photo at a time,
- * large, with arrow navigation and smooth transitions).
+ * Full-screen overlay that covers the entire page (globe, panel, everything).
+ * Shows a 3-column photo grid with upload and delete.
+ * Clicking a photo opens an enlarged single-photo viewer.
  */
 export default function PhotoGallery({
+  countryName,
   photos,
   loading,
   uploading,
@@ -25,10 +27,9 @@ export default function PhotoGallery({
 }: PhotoGalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  // Index of the photo open in the viewer, or null if viewer is closed
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
-  // Keyboard: Escape closes viewer first, then gallery
+  // Escape closes viewer first, then gallery
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -59,17 +60,39 @@ export default function PhotoGallery({
 
   return (
     <div style={galleryStyles.overlay}>
-      {/* Top bar */}
-      <div style={galleryStyles.topBar}>
-        <span style={galleryStyles.counter}>
-          {hasPhotos ? `${photos.length} photo${photos.length !== 1 ? 's' : ''}` : 'No photos yet'}
-        </span>
+      {/* Header */}
+      <div style={galleryStyles.header}>
+        <h2 style={galleryStyles.title}>{countryName}</h2>
         <button style={galleryStyles.closeBtn} onClick={onClose} aria-label="Close gallery">
           ✕
         </button>
       </div>
 
-      {/* Thumbnail grid */}
+      {/* Upload bar */}
+      <div style={galleryStyles.uploadBar}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleFileSelect}
+        />
+        <button
+          style={galleryStyles.uploadBtn}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? 'Uploading...' : '+ Add Photos'}
+        </button>
+        {hasPhotos && (
+          <span style={galleryStyles.photoCount}>
+            {photos.length} photo{photos.length !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+
+      {/* Photo grid — scrollable area */}
       <div style={galleryStyles.gridArea}>
         {loading ? (
           <div style={galleryStyles.emptyText}>Loading photos...</div>
@@ -99,30 +122,11 @@ export default function PhotoGallery({
             ))}
           </div>
         ) : (
-          <div style={galleryStyles.emptyText}>No photos yet — add some below</div>
+          <div style={galleryStyles.emptyText}>No photos yet — click "Add Photos" above</div>
         )}
       </div>
 
-      {/* Upload button */}
-      <div style={galleryStyles.bottomBar}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
-        />
-        <button
-          style={galleryStyles.actionBtn}
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
-          {uploading ? 'Uploading...' : '+ Add Photos'}
-        </button>
-      </div>
-
-      {/* Photo viewer overlay — opens when a thumbnail is clicked */}
+      {/* Enlarged photo viewer */}
       {viewerIndex !== null && (
         <PhotoViewer
           photos={photos}
@@ -145,7 +149,6 @@ interface PhotoViewerProps {
 function PhotoViewer({ photos, startIndex, onClose }: PhotoViewerProps) {
   const [index, setIndex] = useState(startIndex);
 
-  // Keep index in bounds if photos array changes while viewer is open
   useEffect(() => {
     if (photos.length === 0) {
       onClose();
@@ -160,7 +163,6 @@ function PhotoViewer({ photos, startIndex, onClose }: PhotoViewerProps) {
     [photos.length],
   );
 
-  // Arrow key navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') goPrev();
@@ -180,17 +182,14 @@ function PhotoViewer({ photos, startIndex, onClose }: PhotoViewerProps) {
   return (
     <div style={viewerStyles.backdrop} onClick={onClose}>
       <div style={viewerStyles.container} onClick={(e) => e.stopPropagation()}>
-        {/* Close button */}
         <button style={viewerStyles.closeBtn} onClick={onClose} aria-label="Close viewer">
           ✕
         </button>
 
-        {/* Counter */}
         <div style={viewerStyles.counter}>
           {index + 1} / {photos.length}
         </div>
 
-        {/* Left arrow */}
         <button
           style={{
             ...viewerStyles.arrowBtn,
@@ -204,7 +203,6 @@ function PhotoViewer({ photos, startIndex, onClose }: PhotoViewerProps) {
           ‹
         </button>
 
-        {/* Photo with fade transition */}
         <img
           key={current.id}
           src={current.url}
@@ -212,7 +210,6 @@ function PhotoViewer({ photos, startIndex, onClose }: PhotoViewerProps) {
           style={viewerStyles.photo}
         />
 
-        {/* Right arrow */}
         <button
           style={{
             ...viewerStyles.arrowBtn,
@@ -239,22 +236,24 @@ const galleryStyles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'rgba(5, 5, 15, 0.95)',
-    backdropFilter: 'blur(8px)',
+    background: '#0a0a14',
     zIndex: 50,
     display: 'flex',
     flexDirection: 'column',
   },
-  topBar: {
+  header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '1rem 1.25rem',
+    padding: '1.25rem 2rem',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
     flexShrink: 0,
   },
-  counter: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: '0.85rem',
+  title: {
+    fontSize: '1.3rem',
+    fontWeight: 600,
+    color: '#fff',
+    margin: 0,
   },
   closeBtn: {
     background: 'rgba(255, 255, 255, 0.08)',
@@ -270,15 +269,36 @@ const galleryStyles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     lineHeight: 1,
   },
+  uploadBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    padding: '1rem 2rem',
+    flexShrink: 0,
+  },
+  uploadBtn: {
+    padding: '0.55rem 1.25rem',
+    background: 'rgba(100, 180, 255, 0.12)',
+    border: '1px solid rgba(100, 180, 255, 0.25)',
+    borderRadius: '8px',
+    color: 'rgba(100, 180, 255, 0.85)',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  photoCount: {
+    color: 'rgba(255, 255, 255, 0.35)',
+    fontSize: '0.8rem',
+  },
   gridArea: {
     flex: 1,
     overflowY: 'auto' as const,
-    padding: '0 1.25rem',
+    padding: '0 2rem 2rem',
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-    gap: '0.5rem',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '0.6rem',
   },
   thumbWrapper: {
     position: 'relative' as const,
@@ -292,7 +312,6 @@ const galleryStyles: Record<string, React.CSSProperties> = {
     height: '100%',
     objectFit: 'cover' as const,
     display: 'block',
-    transition: 'transform 0.15s',
   },
   thumbPlaceholder: {
     width: '100%',
@@ -306,15 +325,15 @@ const galleryStyles: Record<string, React.CSSProperties> = {
   },
   thumbDeleteBtn: {
     position: 'absolute' as const,
-    top: '4px',
-    right: '4px',
-    width: '22px',
-    height: '22px',
+    top: '6px',
+    right: '6px',
+    width: '24px',
+    height: '24px',
     borderRadius: '50%',
     background: 'rgba(0, 0, 0, 0.7)',
     border: 'none',
     color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: '0.65rem',
+    fontSize: '0.7rem',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -326,23 +345,7 @@ const galleryStyles: Record<string, React.CSSProperties> = {
     color: 'rgba(255, 255, 255, 0.3)',
     fontSize: '0.95rem',
     textAlign: 'center',
-    paddingTop: '3rem',
-  },
-  bottomBar: {
-    display: 'flex',
-    justifyContent: 'center',
-    padding: '1rem 1.25rem',
-    flexShrink: 0,
-  },
-  actionBtn: {
-    padding: '0.55rem 1.25rem',
-    background: 'rgba(100, 180, 255, 0.12)',
-    border: '1px solid rgba(100, 180, 255, 0.25)',
-    borderRadius: '8px',
-    color: 'rgba(100, 180, 255, 0.85)',
-    fontSize: '0.85rem',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
+    paddingTop: '4rem',
   },
 };
 
@@ -355,7 +358,7 @@ const viewerStyles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'rgba(0, 0, 0, 0.88)',
+    background: 'rgba(0, 0, 0, 0.92)',
     zIndex: 60,
     display: 'flex',
     alignItems: 'center',

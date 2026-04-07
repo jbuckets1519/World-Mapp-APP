@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GeoJsonFeature } from '../../types';
 import type { VisitedPlace } from '../../hooks/useTravelData';
-import type { TravelPhoto } from '../../hooks/useTravelPhotos';
-import PhotoGallery from './PhotoGallery';
 
 interface CountryPanelProps {
   country: GeoJsonFeature;
@@ -12,12 +10,8 @@ interface CountryPanelProps {
   onRemoveVisited: () => void;
   onNotesChange: (notes: string) => Promise<boolean>;
   onClose: () => void;
-  // Photo props
-  photos: TravelPhoto[];
-  photosLoading: boolean;
-  photosUploading: boolean;
-  onPhotoUpload: (file: File) => Promise<boolean>;
-  onPhotoDelete: (photoId: string, filePath: string) => Promise<boolean>;
+  photoCount: number;
+  onOpenGallery: () => void;
 }
 
 export default function CountryPanel({
@@ -28,16 +22,12 @@ export default function CountryPanel({
   onRemoveVisited,
   onNotesChange,
   onClose,
-  photos,
-  photosLoading,
-  photosUploading,
-  onPhotoUpload,
-  onPhotoDelete,
+  photoCount,
+  onOpenGallery,
 }: CountryPanelProps) {
   const isVisited = Boolean(visitedData);
   const [notes, setNotes] = useState(visitedData?.notes ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [showGallery, setShowGallery] = useState(false);
   const notesRef = useRef(notes);
   notesRef.current = notes;
 
@@ -50,7 +40,6 @@ export default function CountryPanel({
     });
     setNotes(visitedData?.notes ?? '');
     setSaveStatus('idle');
-    setShowGallery(false);
   }, [visitedData, country.properties.NAME, isVisited]);
 
   const handleMarkVisited = async () => {
@@ -143,22 +132,10 @@ export default function CountryPanel({
           {/* Photo gallery trigger */}
           <button
             style={styles.galleryBtn}
-            onClick={() => setShowGallery(true)}
+            onClick={onOpenGallery}
           >
-            Photo Gallery{photos.length > 0 ? ` (${photos.length})` : ''}
+            Photo Gallery{photoCount > 0 ? ` (${photoCount})` : ''}
           </button>
-
-          {/* Gallery modal */}
-          {showGallery && (
-            <PhotoGallery
-              photos={photos}
-              loading={photosLoading}
-              uploading={photosUploading}
-              onUpload={onPhotoUpload}
-              onDelete={onPhotoDelete}
-              onClose={() => setShowGallery(false)}
-            />
-          )}
         </>
       ) : (
         <p style={styles.loginHint}>Log in to save visited places and notes</p>

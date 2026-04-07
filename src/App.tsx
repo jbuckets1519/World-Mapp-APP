@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Globe } from './components/Globe';
 import { getPolygonId } from './components/Globe/Globe';
 import { CountryPanel } from './components/CountryPanel';
+import PhotoGallery from './components/CountryPanel/PhotoGallery';
 import { ZoomIndicator } from './components/ZoomIndicator';
 import { AuthOverlay, UserIndicator } from './components/Auth';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
@@ -46,6 +47,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [showGallery, setShowGallery] = useState(false);
 
   const rafRef = useRef(0);
   const handleZoomChange = useCallback((distance: number) => {
@@ -112,6 +114,7 @@ export default function App() {
   const handleClose = useCallback(() => {
     setSelectedId(null);
     setSelectedFeature(null);
+    setShowGallery(false);
   }, []);
 
   // Derive place type and ID from the selected feature for Supabase operations
@@ -205,11 +208,20 @@ export default function App() {
           onRemoveVisited={handleRemoveVisited}
           onNotesChange={handleNotesChange}
           onClose={handleClose}
+          photoCount={photos.length}
+          onOpenGallery={() => setShowGallery(true)}
+        />
+      )}
+
+      {showGallery && selectedFeature && (
+        <PhotoGallery
+          countryName={selectedPlaceName}
           photos={photos}
-          photosLoading={photosLoading}
-          photosUploading={photosUploading}
-          onPhotoUpload={handlePhotoUpload}
-          onPhotoDelete={deletePhoto}
+          loading={photosLoading}
+          uploading={photosUploading}
+          onUpload={handlePhotoUpload}
+          onDelete={deletePhoto}
+          onClose={() => setShowGallery(false)}
         />
       )}
     </>

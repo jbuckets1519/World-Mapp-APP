@@ -79,37 +79,45 @@ export function useProfile(userId: string | null) {
 
       const ext = file.name.split('.').pop() ?? 'jpg';
       const filePath = `${userId}/avatar.${ext}`;
+      console.log('[Profile] avatar upload starting →', { filePath, fileName: file.name, fileSize: file.size, fileType: file.type });
 
-      // Upload (overwrite if exists)
-      const { error: uploadErr } = await supabase.storage
+      // Step 1: Upload to storage (overwrite if exists)
+      const { data: uploadData, error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
+      console.log('[Profile] storage upload response →', { data: uploadData, error: uploadErr });
+
       if (uploadErr) {
-        console.error('[Profile] avatar upload ERROR:', uploadErr.message);
+        console.error('[Profile] avatar upload ERROR:', uploadErr.message, uploadErr);
         setSaving(false);
         return false;
       }
 
-      // Get the public URL
+      // Step 2: Get the public URL
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
       const avatarUrl = urlData.publicUrl;
+      console.log('[Profile] public URL →', avatarUrl);
 
-      // Save URL to profile
-      const { error: updateErr } = await supabase
+      // Step 3: Save URL to profiles table
+      const { data: updateData, error: updateErr } = await supabase
         .from('profiles')
         .update({ avatar_url: avatarUrl })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
+
+      console.log('[Profile] profiles update response →', { data: updateData, error: updateErr });
 
       if (updateErr) {
-        console.error('[Profile] avatar_url update ERROR:', updateErr.message);
+        console.error('[Profile] avatar_url update ERROR:', updateErr.message, updateErr);
         setSaving(false);
         return false;
       }
 
+      console.log('[Profile] avatar upload complete — updating local state');
       setProfile((prev) => prev ? { ...prev, avatar_url: avatarUrl } : prev);
       setSaving(false);
       return true;

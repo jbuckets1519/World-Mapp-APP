@@ -9,6 +9,8 @@ interface FriendsPanelProps {
   onFollow: (targetId: string) => Promise<boolean>;
   onUnfollow: (targetId: string) => Promise<boolean>;
   isFollowing: (targetId: string) => boolean;
+  /** Called when the panel opens or closes */
+  onOpenChange?: (isOpen: boolean) => void;
 }
 
 type Tab = 'following' | 'followers';
@@ -21,6 +23,7 @@ export default function FriendsPanel({
   onFollow,
   onUnfollow,
   isFollowing,
+  onOpenChange,
 }: FriendsPanelProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('following');
@@ -30,6 +33,11 @@ export default function FriendsPanel({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Notify parent of open/close
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   // Close when clicking outside
   useEffect(() => {

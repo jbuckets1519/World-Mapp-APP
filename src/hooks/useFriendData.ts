@@ -15,8 +15,9 @@ export function useFriendData() {
   const [friendPhotos, setFriendPhotos] = useState<TravelPhoto[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
-  // Track which friend is currently loaded so we can show their name
   const [activeFriendId, setActiveFriendId] = useState<string | null>(null);
+  // Version counter — tells the Globe to re-evaluate color accessors
+  const [version, setVersion] = useState(0);
 
   // Load all visited places for a given friend
   const loadFriendPlaces = useCallback(async (friendId: string) => {
@@ -24,22 +25,31 @@ export function useFriendData() {
     setLoadingPlaces(true);
     setActiveFriendId(friendId);
 
-    const { data, error } = await supabase
+    console.log('[FriendData] fetching visited_places for friend:', friendId);
+    const { data, error, status, statusText } = await supabase
       .from('visited_places')
       .select('*')
       .eq('user_id', friendId)
       .order('visited_at', { ascending: false });
 
+    console.log('[FriendData] Supabase response:', { status, statusText, error, rowCount: data?.length ?? 0 });
+
     if (error) {
-      console.error('[FriendData] loadFriendPlaces ERROR:', error.message);
+      console.error('[FriendData] loadFriendPlaces ERROR:', error.message, error.details, error.hint);
       setFriendPlaces([]);
       setFriendVisitedIds(new Set());
     } else {
       const places = (data ?? []) as VisitedPlace[];
+      const ids = new Set(places.map((p) => p.place_id));
       setFriendPlaces(places);
-      setFriendVisitedIds(new Set(places.map((p) => p.place_id)));
+      setFriendVisitedIds(ids);
       console.log('[FriendData] loaded', places.length, 'places for friend', friendId);
+      console.log('[FriendData] place_ids:', [...ids]);
+      if (places.length > 0) {
+        console.log('[FriendData] sample row:', places[0]);
+      }
     }
+    setVersion((v) => v + 1);
     setLoadingPlaces(false);
   }, []);
 
@@ -49,6 +59,7 @@ export function useFriendData() {
     setFriendVisitedIds(new Set());
     setFriendPhotos([]);
     setActiveFriendId(null);
+    setVersion((v) => v + 1);
   }, []);
 
   // Get a friend's data for a specific place
@@ -117,6 +128,7 @@ export function useFriendData() {
     friendVisitedIds,
     friendPhotos,
     activeFriendId,
+    version,
     loadingPlaces,
     loadingPhotos,
     loadFriendPlaces,

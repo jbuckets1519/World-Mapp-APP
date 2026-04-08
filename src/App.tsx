@@ -69,6 +69,7 @@ export default function App() {
   const {
     friendVisitedIds,
     activeFriendId,
+    version: friendVersion,
     loadingPlaces: friendLoadingPlaces,
     friendPhotos,
     loadingPhotos: friendPhotosLoading,
@@ -86,6 +87,7 @@ export default function App() {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showGallery, setShowGallery] = useState(false);
   const [showFriendGallery, setShowFriendGallery] = useState(false);
+  const [friendsPanelOpen, setFriendsPanelOpen] = useState(false);
 
   const rafRef = useRef(0);
   const handleZoomChange = useCallback((distance: number) => {
@@ -294,6 +296,7 @@ export default function App() {
         visitedIds={visitedIds}
         friendVisitedIds={friendVisitedIds}
         visitedVersion={visitedVersion}
+        friendVersion={friendVersion}
         zoomLevel={zoomLevel}
         width={dimensions.width}
         height={dimensions.height}
@@ -322,7 +325,9 @@ export default function App() {
             onFollow={follow}
             onUnfollow={unfollow}
             isFollowing={isFollowing}
+            onOpenChange={setFriendsPanelOpen}
           />
+          {!friendsPanelOpen && !showGallery && !showFriendGallery && (
           <FriendOverlay
             following={following}
             activeFriendId={activeFriendId}
@@ -330,6 +335,7 @@ export default function App() {
             onSelectFriend={loadFriendPlaces}
             onClear={clearFriend}
           />
+          )}
         </>
       )}
 

@@ -17,6 +17,8 @@ interface GlobeProps {
   friendVisitedIds?: Set<string>;
   /** Increment this to force re-evaluation of visited colors */
   visitedVersion?: number;
+  /** Increment this to force re-evaluation of friend overlay colors */
+  friendVersion?: number;
   /** Current zoom level 1–100, drives city dot size/visibility */
   zoomLevel?: number;
   width?: number;
@@ -84,6 +86,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   visitedIds,
   friendVisitedIds,
   visitedVersion = 0,
+  friendVersion = 0,
   zoomLevel = 1,
   width = window.innerWidth,
   height = window.innerHeight,
@@ -142,7 +145,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       if (friendRef.current?.has(id)) return FRIEND_VISITED_CAP;
       return f._isState ? STATE_CAP : COUNTRY_CAP;
     },
-    [selectedId, visitedVersion],
+    [selectedId, visitedVersion, friendVersion],
   );
 
   const getSideColor = useCallback(
@@ -154,7 +157,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       if (friendRef.current?.has(id)) return FRIEND_VISITED_SIDE;
       return f._isState ? STATE_SIDE : COUNTRY_SIDE;
     },
-    [selectedId, visitedVersion],
+    [selectedId, visitedVersion, friendVersion],
   );
 
   const getStrokeColor = useCallback((feat: object) => {
@@ -163,7 +166,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     if (visitedRef.current?.has(id)) return VISITED_STROKE;
     if (friendRef.current?.has(id)) return FRIEND_VISITED_STROKE;
     return f._isState ? STATE_STROKE : COUNTRY_STROKE;
-  }, [visitedVersion]);
+  }, [visitedVersion, friendVersion]);
 
   const getAltitude = useCallback(
     (feat: object) => {
@@ -174,7 +177,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       if (friendRef.current?.has(id)) return FRIEND_VISITED_ALT;
       return f._isState ? STATE_ALT : COUNTRY_ALT;
     },
-    [selectedId, visitedVersion],
+    [selectedId, visitedVersion, friendVersion],
   );
 
   const getLabel = useCallback((feat: object) => {
@@ -216,7 +219,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       if (friendRef.current?.has(city.id)) return CITY_FRIEND_VISITED_COLOR;
       return CITY_COLOR;
     },
-    [selectedId, visitedVersion],
+    [selectedId, visitedVersion, friendVersion],
   );
 
   const getCityLabel = useCallback((pt: object) => {

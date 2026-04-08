@@ -52,8 +52,6 @@ const VISITED_STROKE = 'rgba(255, 160, 50, 0.5)';
 const PURPLE_VISITED_CAP = 'rgba(180, 130, 255, 0.35)';
 const PURPLE_VISITED_SIDE = 'rgba(180, 130, 255, 0.15)';
 const PURPLE_VISITED_STROKE = 'rgba(180, 130, 255, 0.5)';
-const PURPLE_CITY_VISITED = 'rgba(180, 130, 255, 0.9)';
-
 // --- City dot colors ---
 // Default: soft white to stay neutral against the blue globe
 const CITY_COLOR = 'rgba(220, 220, 230, 0.6)';
@@ -207,10 +205,11 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     (pt: object) => {
       const city = pt as CityPoint;
       if (city.id === selectedId) return CITY_SELECTED_COLOR;
-      if (visitedRef.current?.has(city.id)) return isPurple ? PURPLE_CITY_VISITED : CITY_VISITED_COLOR;
+      // Visited cities are always green regardless of whose map
+      if (visitedRef.current?.has(city.id)) return CITY_VISITED_COLOR;
       return CITY_COLOR;
     },
-    [selectedId, visitedVersion, isPurple],
+    [selectedId, visitedVersion],
   );
 
   const getCityLabel = useCallback((pt: object) => {

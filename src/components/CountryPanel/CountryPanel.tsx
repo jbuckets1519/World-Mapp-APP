@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import type { VisitedPlace } from '../../hooks/useTravelData';
-import type { TravelPhoto } from '../../hooks/useTravelPhotos';
 
 interface CountryPanelProps {
   /** GeoJSON feature for country/state, OR null when a city is selected */

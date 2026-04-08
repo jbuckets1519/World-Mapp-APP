@@ -24,6 +24,14 @@ const MAX_ZOOM_DISTANCE = 500;
 const STATE_ZOOM_ON = 85;
 const STATE_ZOOM_OFF = 80;
 
+// Countries with subdivision data — excluded from the base layer at state zoom
+// to prevent z-fighting between the coarse country polygon and the state polygons.
+const COUNTRIES_WITH_SUBDIVISIONS = new Set([
+  'United States of America',
+  'Canada',
+  'Mexico',
+]);
+
 function distanceToZoomLevel(distance: number): number {
   const clamped = Math.max(MIN_ZOOM_DISTANCE, Math.min(MAX_ZOOM_DISTANCE, distance));
   const ratio = (MAX_ZOOM_DISTANCE - clamped) / (MAX_ZOOM_DISTANCE - MIN_ZOOM_DISTANCE);
@@ -147,12 +155,16 @@ export default function App() {
     return lakes.length > 0 ? [...countries, ...lakes] : countries;
   }, [countries, lakes]);
 
-  // Lakes are included at state zoom too — they fill the gaps between state/country
-  // shorelines (e.g. the Great Lakes). Lakes render below states (altitude 0.004 < 0.006)
-  // so any coarse overlap onto land is hidden by the state polygon on top.
+  // At state zoom, exclude countries that have subdivision data (USA, Canada, Mexico)
+  // to prevent z-fighting between the coarse country polygon and the detailed state
+  // polygons at nearly the same altitude — this causes dark patches inside states.
+  // Lakes fill the water gaps (Great Lakes, etc.) between state shorelines.
   const withStates = useMemo(() => {
     if (countries.length === 0) return [];
-    const base = lakes.length > 0 ? [...countries, ...lakes] : countries;
+    const otherCountries = countries.filter(
+      (f) => !COUNTRIES_WITH_SUBDIVISIONS.has(f.properties.NAME as string),
+    );
+    const base = lakes.length > 0 ? [...otherCountries, ...lakes] : otherCountries;
     return subdivisions.length > 0 ? [...base, ...subdivisions] : base;
   }, [countries, subdivisions, lakes]);
 

@@ -9,6 +9,7 @@ import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
 import { FriendsPanel, FriendOverlay } from './components/Friends';
 import { AuthOverlay, UserIndicator, ProfileEditor, ProfileView } from './components/Auth';
+import PerfMonitor from './components/PerfMonitor';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
@@ -336,6 +337,7 @@ export default function App() {
         onFlyTo={handleFlyTo}
       />
       <ZoomIndicator level={zoomLevel} />
+      <PerfMonitor polygonCount={polygons.length} cityCount={visibleCities.length} />
 
       {/* "Back to My Map" banner when viewing a friend's map */}
       {isFriendView && activeFriendName && (

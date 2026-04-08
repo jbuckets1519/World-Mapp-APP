@@ -180,12 +180,12 @@ export function useGlobeConfig() {
           }
         }
 
-        const deduplicated = [...seen.values()];
-        // Sort by importance so the most important cities are first
-        deduplicated.sort((a, b) => a.scaleRank - b.scaleRank);
+        // Keep only SCALERANK 0–6 (~1,000 most important cities)
+        const filtered = [...seen.values()].filter((c) => c.scaleRank <= 6);
+        filtered.sort((a, b) => a.scaleRank - b.scaleRank);
 
-        console.log(`[GlobeConfig] loaded ${deduplicated.length} cities from Natural Earth 10m`);
-        setCities(deduplicated);
+        console.log(`[GlobeConfig] loaded ${filtered.length} cities (SCALERANK 0-6) from Natural Earth 10m`);
+        setCities(filtered);
       })
       .catch((err) => {
         console.error('[GlobeConfig] cities load ERROR:', err.message);

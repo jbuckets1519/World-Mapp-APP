@@ -16,12 +16,9 @@ interface CountryPanelProps {
   onClose: () => void;
   photoCount: number;
   onOpenGallery: () => void;
-  /** Friend overlay data (when a friend's map is active) */
+  /** When set, the panel shows this friend's data in read-only mode */
+  friendViewMode?: boolean;
   friendName?: string | null;
-  friendVisitedData?: VisitedPlace | undefined;
-  friendPhotos?: TravelPhoto[];
-  friendPhotosLoading?: boolean;
-  onOpenFriendGallery?: () => void;
 }
 
 export default function CountryPanel({
@@ -35,11 +32,8 @@ export default function CountryPanel({
   onClose,
   photoCount,
   onOpenGallery,
+  friendViewMode = false,
   friendName,
-  friendVisitedData,
-  friendPhotos,
-  friendPhotosLoading,
-  onOpenFriendGallery,
 }: CountryPanelProps) {
   // Derive display name from whichever selection is active
   const displayName = city ? city.name : country?.properties.NAME ?? '';
@@ -51,46 +45,31 @@ export default function CountryPanel({
   const notesRef = useRef(notes);
   notesRef.current = notes;
 
-  // Log what data the panel receives when it opens or data changes
   useEffect(() => {
-    console.log('[CountryPanel] opened/updated —', displayName, {
-      isVisited,
-      visitedData,
-      notesFromDB: visitedData?.notes ?? '(none)',
-    });
     setNotes(visitedData?.notes ?? '');
     setSaveStatus('idle');
-  }, [visitedData, displayName, isVisited]);
+  }, [visitedData, displayName]);
 
   const handleMarkVisited = async () => {
-    console.log('[CountryPanel] Mark as visited clicked —', displayName);
     const ok = await onMarkVisited(notesRef.current);
     console.log('[CountryPanel] markVisited result:', ok ? 'SUCCESS' : 'FAILED');
   };
 
   const handleRemoveVisited = () => {
-    console.log('[CountryPanel] Remove visited clicked —', displayName);
     onRemoveVisited();
   };
 
   const handleSaveNotes = async () => {
     const currentNotes = notesRef.current;
-    console.log('[CountryPanel] Save notes clicked —', displayName, {
-      notes: currentNotes,
-      isVisited,
-    });
     setSaveStatus('saving');
 
     let ok: boolean;
     if (isVisited) {
-      // Place already exists in DB — update the notes column
       ok = await onNotesChange(currentNotes);
     } else {
-      // Place not yet visited — mark as visited with these notes
       ok = await onMarkVisited(currentNotes);
     }
 
-    console.log('[CountryPanel] Save result:', ok ? 'SUCCESS' : 'FAILED');
     if (ok) {
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 1500);
@@ -100,6 +79,49 @@ export default function CountryPanel({
     }
   };
 
+  // --- Friend view mode: read-only panel showing their data ---
+  if (friendViewMode) {
+    return (
+      <div style={{ ...styles.panel, borderColor: 'rgba(180, 130, 255, 0.25)' }}>
+        <div style={styles.header}>
+          <div>
+            <h2 style={styles.name}>{displayName}</h2>
+            {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
+          </div>
+          <button style={styles.closeBtn} onClick={onClose} aria-label="Close panel">
+            ✕
+          </button>
+        </div>
+
+        {/* Friend attribution */}
+        <div style={styles.friendBadge}>
+          <span style={styles.friendDot} />
+          {friendName}'s map
+        </div>
+
+        {isVisited ? (
+          <>
+            <div style={styles.friendVisitedTag}>✓ {friendName} visited this place</div>
+
+            {visitedData?.notes && (
+              <div style={styles.friendNotesBox}>
+                <div style={styles.friendNotesLabel}>Notes</div>
+                <p style={styles.friendNotesText}>{visitedData.notes}</p>
+              </div>
+            )}
+
+            <button style={styles.friendGalleryBtn} onClick={onOpenGallery}>
+              Photo Gallery{photoCount > 0 ? ` (${photoCount})` : ''}
+            </button>
+          </>
+        ) : (
+          <p style={styles.friendNotVisited}>{friendName} hasn't visited this place</p>
+        )}
+      </div>
+    );
+  }
+
+  // --- Own map mode: editable panel ---
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
@@ -114,7 +136,6 @@ export default function CountryPanel({
 
       {isLoggedIn ? (
         <>
-          {/* Visited toggle */}
           <button
             style={{
               ...styles.visitedBtn,
@@ -125,7 +146,6 @@ export default function CountryPanel({
             {isVisited ? '✓ Visited' : 'Mark as visited'}
           </button>
 
-          {/* Notes textarea */}
           <textarea
             style={styles.textarea}
             placeholder="Add notes about this place..."
@@ -133,7 +153,6 @@ export default function CountryPanel({
             onChange={(e) => setNotes(e.target.value)}
           />
 
-          {/* Save button — shows real success/failure from Supabase */}
           <button
             style={{
               ...styles.saveBtn,
@@ -152,33 +171,9 @@ export default function CountryPanel({
                   : 'Save Notes'}
           </button>
 
-          {/* Photo gallery trigger */}
-          <button
-            style={styles.galleryBtn}
-            onClick={onOpenGallery}
-          >
+          <button style={styles.galleryBtn} onClick={onOpenGallery}>
             Photo Gallery{photoCount > 0 ? ` (${photoCount})` : ''}
           </button>
-
-          {/* Friend's data section — shown when a friend overlay is active and they visited this place */}
-          {friendName && friendVisitedData && (
-            <div style={styles.friendSection}>
-              <div style={styles.friendHeader}>
-                <span style={styles.friendDot} />
-                {friendName}'s visit
-              </div>
-              {friendVisitedData.notes && (
-                <p style={styles.friendNotes}>{friendVisitedData.notes}</p>
-              )}
-              {onOpenFriendGallery && (
-                <button style={styles.friendGalleryBtn} onClick={onOpenFriendGallery}>
-                  {friendPhotosLoading
-                    ? 'Loading photos...'
-                    : `${friendName}'s Photos${friendPhotos && friendPhotos.length > 0 ? ` (${friendPhotos.length})` : ''}`}
-                </button>
-              )}
-            </div>
-          )}
         </>
       ) : (
         <p style={styles.loginHint}>Log in to save visited places and notes</p>
@@ -230,6 +225,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '6px',
     lineHeight: 1,
   },
+  // --- Own map styles ---
   visitedBtn: {
     width: '100%',
     padding: '0.6rem',
@@ -301,21 +297,15 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     margin: 0,
   },
-  friendSection: {
-    marginTop: '0.75rem',
-    padding: '0.75rem',
-    background: 'rgba(180, 130, 255, 0.06)',
-    border: '1px solid rgba(180, 130, 255, 0.2)',
-    borderRadius: '8px',
-  },
-  friendHeader: {
+  // --- Friend view mode styles ---
+  friendBadge: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.4rem',
     color: 'rgba(180, 130, 255, 0.9)',
-    fontSize: '0.8rem',
+    fontSize: '0.78rem',
     fontWeight: 600,
-    marginBottom: '0.4rem',
+    marginBottom: '0.75rem',
   },
   friendDot: {
     width: '6px',
@@ -324,22 +314,47 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(180, 130, 255, 0.7)',
     flexShrink: 0,
   },
-  friendNotes: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: '0.8rem',
-    margin: '0 0 0.5rem 0',
-    lineHeight: 1.4,
+  friendVisitedTag: {
+    padding: '0.5rem 0.65rem',
+    background: 'rgba(180, 130, 255, 0.1)',
+    border: '1px solid rgba(180, 130, 255, 0.25)',
+    borderRadius: '8px',
+    color: 'rgba(180, 130, 255, 0.9)',
+    fontSize: '0.82rem',
+    marginBottom: '0.75rem',
+  },
+  friendNotesBox: {
+    marginBottom: '0.75rem',
+  },
+  friendNotesLabel: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: '0.7rem',
+    marginBottom: '0.25rem',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+  },
+  friendNotesText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: '0.85rem',
+    margin: 0,
+    lineHeight: 1.5,
     whiteSpace: 'pre-wrap' as const,
   },
   friendGalleryBtn: {
     width: '100%',
-    padding: '0.45rem',
+    padding: '0.55rem',
     background: 'rgba(180, 130, 255, 0.1)',
     border: '1px solid rgba(180, 130, 255, 0.25)',
-    borderRadius: '6px',
+    borderRadius: '8px',
     color: 'rgba(180, 130, 255, 0.8)',
-    fontSize: '0.78rem',
+    fontSize: '0.85rem',
     cursor: 'pointer',
     fontFamily: 'inherit',
+  },
+  friendNotVisited: {
+    color: 'rgba(255, 255, 255, 0.35)',
+    fontSize: '0.82rem',
+    textAlign: 'center',
+    margin: 0,
   },
 };

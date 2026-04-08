@@ -19,7 +19,6 @@ import { useProfile } from './hooks/useProfile';
 import { CITIES } from './data/cities';
 import type { GeoJsonFeature, CityPoint } from './types';
 
-// Pre-compute city points with stable IDs
 const CITY_POINTS: CityPoint[] = CITIES.map((c) => ({
   ...c,
   id: `city:${c.name}`,
@@ -94,10 +93,12 @@ export default function App() {
   const [selectedCity, setSelectedCity] = useState<CityPoint | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showGallery, setShowGallery] = useState(false);
-  const [showFriendGallery, setShowFriendGallery] = useState(false);
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
+
+  // Are we viewing a friend's map? This drives the entire UI mode.
+  const isFriendView = Boolean(activeFriendId);
 
   const rafRef = useRef(0);
   const handleZoomChange = useCallback((distance: number) => {
@@ -147,6 +148,14 @@ export default function App() {
     }
   }, [showStates, selectedFeature]);
 
+  // Clear selection when switching between own map and friend map
+  useEffect(() => {
+    setSelectedId(null);
+    setSelectedFeature(null);
+    setSelectedCity(null);
+    setShowGallery(false);
+  }, [activeFriendId]);
+
   const handlePolygonClick = useCallback(
     (polygon: GeoJsonFeature) => {
       const id = getPolygonId(polygon);
@@ -157,7 +166,6 @@ export default function App() {
         setSelectedId(id);
         setSelectedFeature(polygon);
       }
-      // Clear city selection when a polygon is clicked
       setSelectedCity(null);
     },
     [selectedId],
@@ -172,13 +180,11 @@ export default function App() {
         setSelectedId(city.id);
         setSelectedCity(city);
       }
-      // Clear polygon selection when a city is clicked
       setSelectedFeature(null);
     },
     [selectedId],
   );
 
-  // Search result handlers — select the item and let the SearchBar fly the camera
   const handleSearchSelectCity = useCallback((city: CityPoint) => {
     setSelectedId(city.id);
     setSelectedCity(city);
@@ -201,10 +207,9 @@ export default function App() {
     setSelectedFeature(null);
     setSelectedCity(null);
     setShowGallery(false);
-    setShowFriendGallery(false);
   }, []);
 
-  // Derive place type and ID from whichever item is selected (polygon or city)
+  // --- Derive selected place info ---
   const selectedPlaceType: 'country' | 'state' | 'city' = selectedCity
     ? 'city'
     : selectedFeature?._isState
@@ -219,34 +224,39 @@ export default function App() {
     ? selectedCity.name
     : selectedFeature?.properties.NAME ?? '';
   const hasSelection = Boolean(selectedFeature || selectedCity);
+
+  // --- Data for the selected place depends on whose map we're viewing ---
   const selectedVisitedData = hasSelection
-    ? getPlace(selectedPlaceType, selectedPlaceId)
+    ? isFriendView
+      ? getFriendPlace(selectedPlaceType, selectedPlaceId)
+      : getPlace(selectedPlaceType, selectedPlaceId)
     : undefined;
 
-  // Load photos whenever the selected place changes
+  // Load photos for the selected place
   useEffect(() => {
-    if (hasSelection && user) {
+    if (!hasSelection) return;
+    if (isFriendView) {
+      loadFriendPhotos(selectedPlaceType, selectedPlaceId);
+    } else if (user) {
       loadPhotos(selectedPlaceType, selectedPlaceId);
     }
-  }, [hasSelection, user, selectedPlaceType, selectedPlaceId, loadPhotos]);
+  }, [hasSelection, isFriendView, user, selectedPlaceType, selectedPlaceId, loadPhotos, loadFriendPhotos]);
 
-  // Load friend's photos for the selected place when friend overlay is active
-  useEffect(() => {
-    if (hasSelection && activeFriendId) {
-      loadFriendPhotos(selectedPlaceType, selectedPlaceId);
-    }
-  }, [hasSelection, activeFriendId, selectedPlaceType, selectedPlaceId, loadFriendPhotos]);
-
-  // Derive friend info for CountryPanel
+  // Friend info
   const activeFriendProfile = activeFriendId
     ? following.find((f) => f.following_id === activeFriendId)?.profile
     : null;
   const activeFriendName = activeFriendProfile
-    ? activeFriendProfile.display_name || activeFriendProfile.email || 'Friend'
+    ? activeFriendProfile.username || activeFriendProfile.display_name || activeFriendProfile.email || 'Friend'
     : null;
-  const selectedFriendVisitedData = hasSelection && activeFriendId
-    ? getFriendPlace(selectedPlaceType, selectedPlaceId)
-    : undefined;
+
+  // Which photos/counts to show depends on mode
+  const panelPhotos = isFriendView ? friendPhotos : photos;
+  const panelPhotosLoading = isFriendView ? friendPhotosLoading : photosLoading;
+
+  // Globe data: show friend's visited IDs when in friend view, otherwise own
+  const globeVisitedIds = isFriendView ? friendVisitedIds : visitedIds;
+  const globeVisitedVersion = isFriendView ? friendVersion : visitedVersion;
 
   const handlePhotoUpload = useCallback(
     (file: File) => uploadPhoto(selectedPlaceType, selectedPlaceId, file),
@@ -254,18 +264,15 @@ export default function App() {
   );
 
   const handleMarkVisited = useCallback(async (notes: string): Promise<boolean> => {
-    console.log('[App] handleMarkVisited →', { selectedPlaceType, selectedPlaceId, selectedPlaceName, notes });
     return markVisited(selectedPlaceType, selectedPlaceId, selectedPlaceName, notes);
   }, [markVisited, selectedPlaceType, selectedPlaceId, selectedPlaceName]);
 
   const handleRemoveVisited = useCallback(async () => {
-    console.log('[App] handleRemoveVisited →', { selectedPlaceType, selectedPlaceId });
     await removeVisited(selectedPlaceType, selectedPlaceId);
   }, [removeVisited, selectedPlaceType, selectedPlaceId]);
 
   const handleNotesChange = useCallback(
     async (notes: string): Promise<boolean> => {
-      console.log('[App] handleNotesChange →', { selectedPlaceType, selectedPlaceId, notes });
       return updateNotes(selectedPlaceType, selectedPlaceId, notes);
     },
     [updateNotes, selectedPlaceType, selectedPlaceId],
@@ -303,10 +310,9 @@ export default function App() {
         polygons={polygons}
         cities={CITY_POINTS}
         selectedId={selectedId}
-        visitedIds={visitedIds}
-        friendVisitedIds={friendVisitedIds}
-        visitedVersion={visitedVersion}
-        friendVersion={friendVersion}
+        visitedIds={globeVisitedIds}
+        visitedVersion={globeVisitedVersion}
+        visitedColor={isFriendView ? 'purple' : 'orange'}
         zoomLevel={zoomLevel}
         width={dimensions.width}
         height={dimensions.height}
@@ -322,6 +328,17 @@ export default function App() {
         onFlyTo={handleFlyTo}
       />
       <ZoomIndicator level={zoomLevel} />
+
+      {/* "Back to My Map" banner when viewing a friend's map */}
+      {isFriendView && activeFriendName && (
+        <div style={friendBannerStyles.banner}>
+          <span style={friendBannerStyles.dot} />
+          <span>Viewing <strong>{activeFriendName}</strong>'s map</span>
+          <button style={friendBannerStyles.backBtn} onClick={clearFriend}>
+            Back to My Map
+          </button>
+        </div>
+      )}
 
       {!user && <AuthOverlay onSignIn={signIn} onSignUp={signUp} />}
       {user && (
@@ -343,64 +360,65 @@ export default function App() {
             onOpenChange={setFriendsPanelOpen}
             onViewProfile={setViewingProfileId}
           />
-          {!friendsPanelOpen && !showGallery && !showFriendGallery && (
-          <FriendOverlay
-            following={following}
-            activeFriendId={activeFriendId}
-            loadingPlaces={friendLoadingPlaces}
-            onSelectFriend={loadFriendPlaces}
-            onClear={clearFriend}
-          />
+          {/* Friend overlay selector — hidden when panels are open */}
+          {!friendsPanelOpen && !showGallery && (
+            <FriendOverlay
+              following={following}
+              activeFriendId={activeFriendId}
+              loadingPlaces={friendLoadingPlaces}
+              onSelectFriend={loadFriendPlaces}
+              onClear={clearFriend}
+            />
           )}
         </>
       )}
 
       {hasSelection && (
-        <CountryPanel
-          country={selectedFeature}
-          city={selectedCity}
-          visitedData={selectedVisitedData}
-          isLoggedIn={Boolean(user)}
-          onMarkVisited={handleMarkVisited}
-          onRemoveVisited={handleRemoveVisited}
-          onNotesChange={handleNotesChange}
-          onClose={handleClose}
-          photoCount={photos.length}
-          onOpenGallery={() => setShowGallery(true)}
-          friendName={activeFriendName}
-          friendVisitedData={selectedFriendVisitedData}
-          friendPhotos={friendPhotos}
-          friendPhotosLoading={friendPhotosLoading}
-          onOpenFriendGallery={() => setShowFriendGallery(true)}
-        />
+        isFriendView ? (
+          // Friend view: read-only panel with friend's data
+          <CountryPanel
+            country={selectedFeature}
+            city={selectedCity}
+            visitedData={selectedVisitedData}
+            isLoggedIn={Boolean(user)}
+            onMarkVisited={async () => false}
+            onRemoveVisited={() => {}}
+            onNotesChange={async () => false}
+            onClose={handleClose}
+            photoCount={panelPhotos.length}
+            onOpenGallery={() => setShowGallery(true)}
+            friendViewMode={true}
+            friendName={activeFriendName}
+          />
+        ) : (
+          // Own map: editable panel
+          <CountryPanel
+            country={selectedFeature}
+            city={selectedCity}
+            visitedData={selectedVisitedData}
+            isLoggedIn={Boolean(user)}
+            onMarkVisited={handleMarkVisited}
+            onRemoveVisited={handleRemoveVisited}
+            onNotesChange={handleNotesChange}
+            onClose={handleClose}
+            photoCount={panelPhotos.length}
+            onOpenGallery={() => setShowGallery(true)}
+          />
+        )
       )}
 
       {showGallery && hasSelection && (
         <PhotoGallery
-          countryName={selectedPlaceName}
-          photos={photos}
-          loading={photosLoading}
-          uploading={photosUploading}
-          onUpload={handlePhotoUpload}
-          onDelete={deletePhoto}
+          countryName={isFriendView ? `${activeFriendName} — ${selectedPlaceName}` : selectedPlaceName}
+          photos={panelPhotos}
+          loading={panelPhotosLoading}
+          uploading={isFriendView ? false : photosUploading}
+          onUpload={isFriendView ? async () => false : handlePhotoUpload}
+          onDelete={isFriendView ? async () => false : deletePhoto}
           onClose={() => setShowGallery(false)}
         />
       )}
 
-      {/* Friend's photo gallery — read-only (no upload/delete) */}
-      {showFriendGallery && hasSelection && activeFriendName && (
-        <PhotoGallery
-          countryName={`${activeFriendName} — ${selectedPlaceName}`}
-          photos={friendPhotos}
-          loading={friendPhotosLoading}
-          uploading={false}
-          onUpload={async () => false}
-          onDelete={async () => false}
-          onClose={() => setShowFriendGallery(false)}
-        />
-      )}
-
-      {/* Profile editor modal */}
       {showProfileEditor && profile && (
         <ProfileEditor
           profile={profile}
@@ -411,7 +429,6 @@ export default function App() {
         />
       )}
 
-      {/* View another user's profile */}
       {viewingProfileId && (
         <ProfileView
           userId={viewingProfileId}
@@ -424,3 +441,44 @@ export default function App() {
     </>
   );
 }
+
+// --- Styles for the friend view banner ---
+const friendBannerStyles: Record<string, React.CSSProperties> = {
+  banner: {
+    position: 'fixed',
+    bottom: '1rem',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.5rem 0.75rem 0.5rem 0.65rem',
+    background: 'rgba(15, 15, 25, 0.9)',
+    backdropFilter: 'blur(12px)',
+    border: '1px solid rgba(180, 130, 255, 0.3)',
+    borderRadius: '10px',
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: '0.8rem',
+    zIndex: 15,
+    whiteSpace: 'nowrap',
+  },
+  dot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    background: 'rgba(180, 130, 255, 0.8)',
+    flexShrink: 0,
+  },
+  backBtn: {
+    marginLeft: '0.5rem',
+    padding: '0.3rem 0.65rem',
+    background: 'rgba(100, 180, 255, 0.15)',
+    border: '1px solid rgba(100, 180, 255, 0.3)',
+    borderRadius: '6px',
+    color: 'rgba(100, 180, 255, 0.9)',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+  },
+};

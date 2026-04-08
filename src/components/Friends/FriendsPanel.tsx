@@ -11,6 +11,8 @@ interface FriendsPanelProps {
   isFollowing: (targetId: string) => boolean;
   /** Called when the panel opens or closes */
   onOpenChange?: (isOpen: boolean) => void;
+  /** Called when the user clicks a username to view their profile */
+  onViewProfile?: (userId: string) => void;
 }
 
 type Tab = 'following' | 'followers';
@@ -24,6 +26,7 @@ export default function FriendsPanel({
   onUnfollow,
   isFollowing,
   onOpenChange,
+  onViewProfile,
 }: FriendsPanelProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('following');
@@ -133,9 +136,9 @@ export default function FriendsPanel({
           <div style={styles.searchResults}>
             {searchResults.map((user) => (
               <div key={user.id} style={styles.userRow}>
-                <div style={styles.userInfo}>
-                  <div style={styles.userName}>{displayUser(user)}</div>
-                  {user.email && user.display_name && (
+                <div style={styles.userInfo} onClick={() => onViewProfile?.(user.id)} role="button">
+                  <div style={styles.userNameLink}>{displayUser(user)}</div>
+                  {user.email && user.username && (
                     <div style={styles.userEmail}>{user.email}</div>
                   )}
                 </div>
@@ -185,9 +188,9 @@ export default function FriendsPanel({
           ) : (
             following.map((rel) => (
               <div key={rel.id} style={styles.userRow}>
-                <div style={styles.userInfo}>
-                  <div style={styles.userName}>{displayUser(rel.profile)}</div>
-                  {rel.profile.email && rel.profile.display_name && (
+                <div style={styles.userInfo} onClick={() => onViewProfile?.(rel.following_id)} role="button">
+                  <div style={styles.userNameLink}>{displayUser(rel.profile)}</div>
+                  {rel.profile.email && rel.profile.username && (
                     <div style={styles.userEmail}>{rel.profile.email}</div>
                   )}
                 </div>
@@ -206,9 +209,9 @@ export default function FriendsPanel({
         ) : (
           followers.map((rel) => (
             <div key={rel.id} style={styles.userRow}>
-              <div style={styles.userInfo}>
-                <div style={styles.userName}>{displayUser(rel.profile)}</div>
-                {rel.profile.email && rel.profile.display_name && (
+              <div style={styles.userInfo} onClick={() => onViewProfile?.(rel.follower_id)} role="button">
+                <div style={styles.userNameLink}>{displayUser(rel.profile)}</div>
+                {rel.profile.email && rel.profile.username && (
                   <div style={styles.userEmail}>{rel.profile.email}</div>
                 )}
               </div>
@@ -357,6 +360,7 @@ const styles: Record<string, React.CSSProperties> = {
   userInfo: {
     flex: 1,
     minWidth: 0,
+    cursor: 'pointer',
   },
   userName: {
     color: '#fff',
@@ -365,6 +369,15 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap' as const,
+  },
+  userNameLink: {
+    color: 'rgba(100, 180, 255, 0.9)',
+    fontSize: '0.82rem',
+    fontWeight: 500,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+    cursor: 'pointer',
   },
   userEmail: {
     color: 'rgba(255, 255, 255, 0.35)',

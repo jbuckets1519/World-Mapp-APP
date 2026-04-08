@@ -8,7 +8,7 @@ import PhotoGallery from './components/CountryPanel/PhotoGallery';
 import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
 import { FriendsPanel, FriendOverlay } from './components/Friends';
-import { AuthOverlay, UserIndicator, ProfileEditor } from './components/Auth';
+import { AuthOverlay, UserIndicator, ProfileEditor, ProfileView } from './components/Auth';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
@@ -97,6 +97,7 @@ export default function App() {
   const [showFriendGallery, setShowFriendGallery] = useState(false);
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
 
   const rafRef = useRef(0);
   const handleZoomChange = useCallback((distance: number) => {
@@ -340,6 +341,7 @@ export default function App() {
             onUnfollow={unfollow}
             isFollowing={isFollowing}
             onOpenChange={setFriendsPanelOpen}
+            onViewProfile={setViewingProfileId}
           />
           {!friendsPanelOpen && !showGallery && !showFriendGallery && (
           <FriendOverlay
@@ -406,6 +408,17 @@ export default function App() {
           onSave={updateProfile}
           onUploadAvatar={uploadAvatar}
           onClose={() => setShowProfileEditor(false)}
+        />
+      )}
+
+      {/* View another user's profile */}
+      {viewingProfileId && (
+        <ProfileView
+          userId={viewingProfileId}
+          isFollowing={isFollowing(viewingProfileId)}
+          onFollow={follow}
+          onUnfollow={unfollow}
+          onClose={() => setViewingProfileId(null)}
         />
       )}
     </>

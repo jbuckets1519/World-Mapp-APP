@@ -72,20 +72,20 @@ export function useFriends(userId: string | null) {
     loadRelations();
   }, [loadRelations]);
 
-  // Search for users by email (partial match)
-  const searchByEmail = useCallback(
+  // Search for users by username or email (partial match)
+  const searchUsers = useCallback(
     async (query: string): Promise<UserProfile[]> => {
-      if (!userId || !isSupabaseConfigured || query.length < 3) return [];
+      if (!userId || !isSupabaseConfigured || query.length < 2) return [];
 
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, display_name, email, avatar_url, bio, is_public')
-        .ilike('email', `%${query}%`)
-        .neq('id', userId) // don't show yourself
+        .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
+        .neq('id', userId)
         .limit(8);
 
       if (error) {
-        console.error('[Friends] searchByEmail ERROR:', error.message);
+        console.error('[Friends] searchUsers ERROR:', error.message);
         return [];
       }
       return (data ?? []) as UserProfile[];
@@ -146,7 +146,7 @@ export function useFriends(userId: string | null) {
     following,
     followers,
     loading,
-    searchByEmail,
+    searchUsers,
     follow,
     unfollow,
     isFollowing,

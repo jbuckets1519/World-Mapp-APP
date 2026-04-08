@@ -61,7 +61,7 @@ export default function App() {
     following,
     followers,
     loading: friendsLoading,
-    searchByEmail,
+    searchUsers,
     follow,
     unfollow,
     isFollowing,
@@ -335,7 +335,7 @@ export default function App() {
             following={following}
             followers={followers}
             loading={friendsLoading}
-            onSearchEmail={searchByEmail}
+            onSearchUsers={searchUsers}
             onFollow={follow}
             onUnfollow={unfollow}
             isFollowing={isFollowing}

@@ -5,7 +5,7 @@ interface FriendsPanelProps {
   following: FollowRelation[];
   followers: FollowRelation[];
   loading: boolean;
-  onSearchEmail: (query: string) => Promise<UserProfile[]>;
+  onSearchUsers: (query: string) => Promise<UserProfile[]>;
   onFollow: (targetId: string) => Promise<boolean>;
   onUnfollow: (targetId: string) => Promise<boolean>;
   isFollowing: (targetId: string) => boolean;
@@ -19,7 +19,7 @@ export default function FriendsPanel({
   following,
   followers,
   loading,
-  onSearchEmail,
+  onSearchUsers,
   onFollow,
   onUnfollow,
   isFollowing,
@@ -51,23 +51,23 @@ export default function FriendsPanel({
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Debounced email search
+  // Debounced user search (username or email)
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    if (searchQuery.length < 3) {
+    if (searchQuery.length < 2) {
       setSearchResults([]);
       return;
     }
     setSearching(true);
     searchTimer.current = setTimeout(async () => {
-      const results = await onSearchEmail(searchQuery);
+      const results = await onSearchUsers(searchQuery);
       setSearchResults(results);
       setSearching(false);
     }, 400);
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
-  }, [searchQuery, onSearchEmail]);
+  }, [searchQuery, onSearchUsers]);
 
   const handleFollow = useCallback(
     async (targetId: string) => {
@@ -92,7 +92,7 @@ export default function FriendsPanel({
 
   // Display name helper
   const displayUser = (profile: UserProfile): string => {
-    return profile.display_name || profile.email || 'Unknown user';
+    return profile.username || profile.display_name || profile.email || 'Unknown user';
   };
 
   if (!open) {
@@ -119,11 +119,11 @@ export default function FriendsPanel({
         <button style={styles.closeBtn} onClick={() => setOpen(false)}>✕</button>
       </div>
 
-      {/* Search by email */}
+      {/* Search by username or email */}
       <div style={styles.searchSection}>
         <input
           type="text"
-          placeholder="Search by email..."
+          placeholder="Search by username or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={styles.searchInput}
@@ -154,7 +154,7 @@ export default function FriendsPanel({
             ))}
           </div>
         )}
-        {searchQuery.length >= 3 && !searching && searchResults.length === 0 && (
+        {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
           <div style={styles.hint}>No users found</div>
         )}
       </div>

@@ -6,7 +6,7 @@ const MAX_BIO_WORDS = 50;
 interface ProfileEditorProps {
   profile: ProfileData;
   saving: boolean;
-  onSave: (updates: { username?: string; bio?: string; display_name?: string }) => Promise<boolean>;
+  onSave: (updates: { username?: string; bio?: string }) => Promise<boolean>;
   onUploadAvatar: (file: File) => Promise<boolean>;
   onClose: () => void;
 }
@@ -23,7 +23,6 @@ export default function ProfileEditor({
   onClose,
 }: ProfileEditorProps) {
   const [username, setUsername] = useState(profile.username ?? '');
-  const [displayName, setDisplayName] = useState(profile.display_name ?? '');
   const [bio, setBio] = useState(profile.bio ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,7 +30,6 @@ export default function ProfileEditor({
   // Reset form when profile changes
   useEffect(() => {
     setUsername(profile.username ?? '');
-    setDisplayName(profile.display_name ?? '');
     setBio(profile.bio ?? '');
     setSaveStatus('idle');
   }, [profile]);
@@ -49,7 +47,6 @@ export default function ProfileEditor({
 
     const ok = await onSave({
       username: username.trim() || undefined,
-      display_name: displayName.trim() || undefined,
       bio: bio.trim() || undefined,
     });
 
@@ -105,17 +102,6 @@ export default function ProfileEditor({
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           maxLength={30}
-          style={styles.input}
-        />
-
-        {/* Display name */}
-        <label style={styles.label}>Display Name</label>
-        <input
-          type="text"
-          placeholder="Your name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          maxLength={50}
           style={styles.input}
         />
 

@@ -48,7 +48,7 @@ export function useProfile(userId: string | null) {
 
   // Update username, bio, display_name
   const updateProfile = useCallback(
-    async (updates: { username?: string; bio?: string; display_name?: string }): Promise<boolean> => {
+    async (updates: { username?: string; bio?: string }): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) return false;
       setSaving(true);
 

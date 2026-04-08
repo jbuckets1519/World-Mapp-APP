@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import type { GeoJsonFeature, GeoJsonData, CityPoint } from '../types';
 
-// 50m countries — includes small island nations missing from 110m
+// 110m countries — lightweight geometry, good enough for globe view
 const COUNTRIES_URL =
-  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
+  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson';
 
-// 50m lakes — major inland water bodies (Great Lakes, Caspian Sea, etc.)
+// 110m lakes — ~25 most significant lakes (Great Lakes, Caspian Sea, etc.)
 const LAKES_URL =
-  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_lakes.geojson';
+  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_lakes.geojson';
 
 // 10m populated places — ~7,300 cities with SCALERANK for tiering
 const CITIES_URL =
@@ -34,7 +34,7 @@ const SUBDIVISION_SOURCES = [
     },
   },
   {
-    url: 'https://raw.githubusercontent.com/angelnmara/geojson/master/mexicoHigh.json',
+    url: 'https://raw.githubusercontent.com/angelnmara/geojson/master/mexicoLow.json',
     nameKey: 'name',
     filter: () => true,
     fixGeometry: () => null,

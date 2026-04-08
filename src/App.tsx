@@ -124,14 +124,12 @@ export default function App() {
   }, [zoomLevel, showStates]);
 
   // Tier cities by zoom: only show top-ranked at low zoom, reveal more as user zooms in.
-  // Dataset is SCALERANK 0–6 (~1,000 cities). Discrete breakpoints avoid constant recomputation.
+  // Dataset is top 300 cities by population. Discrete breakpoints avoid constant recomputation.
   const maxScaleRank = useMemo(() => {
-    if (zoomLevel < 10) return 1;   // ~30 major world cities
-    if (zoomLevel < 25) return 2;   // ~80 cities
-    if (zoomLevel < 40) return 3;   // ~150 cities
-    if (zoomLevel < 55) return 4;   // ~300 cities
-    if (zoomLevel < 70) return 5;   // ~600 cities
-    return 6;                        // all ~1,000 cities
+    if (zoomLevel < 10) return 1;   // ~20 major world cities
+    if (zoomLevel < 30) return 3;   // ~60 cities
+    if (zoomLevel < 50) return 5;   // ~150 cities
+    return 10;                       // all 300 cities
   }, [zoomLevel]);
 
   const visibleCities = useMemo(() => {

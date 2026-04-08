@@ -180,11 +180,14 @@ export function useGlobeConfig() {
           }
         }
 
-        // Keep only SCALERANK 0–6 (~1,000 most important cities)
-        const filtered = [...seen.values()].filter((c) => c.scaleRank <= 6);
+        // Keep top 300 cities by population
+        const all = [...seen.values()];
+        all.sort((a, b) => b.population - a.population);
+        const filtered = all.slice(0, 300);
+        // Re-sort by scaleRank for tiering
         filtered.sort((a, b) => a.scaleRank - b.scaleRank);
 
-        console.log(`[GlobeConfig] loaded ${filtered.length} cities (SCALERANK 0-6) from Natural Earth 10m`);
+        console.log(`[GlobeConfig] loaded ${filtered.length} cities (top 300 by population) from Natural Earth 10m`);
         setCities(filtered);
       })
       .catch((err) => {

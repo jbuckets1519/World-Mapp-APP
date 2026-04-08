@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import type { GeoJsonFeature } from '../../types';
+import type { GeoJsonFeature, CityPoint } from '../../types';
 import type { VisitedPlace } from '../../hooks/useTravelData';
 
 interface CountryPanelProps {
-  country: GeoJsonFeature;
+  /** GeoJSON feature for country/state, OR null when a city is selected */
+  country: GeoJsonFeature | null;
+  /** City data when a city dot is selected */
+  city: CityPoint | null;
   visitedData: VisitedPlace | undefined;
   isLoggedIn: boolean;
   onMarkVisited: (notes: string) => Promise<boolean>;
@@ -16,6 +19,7 @@ interface CountryPanelProps {
 
 export default function CountryPanel({
   country,
+  city,
   visitedData,
   isLoggedIn,
   onMarkVisited,
@@ -25,6 +29,10 @@ export default function CountryPanel({
   photoCount,
   onOpenGallery,
 }: CountryPanelProps) {
+  // Derive display name from whichever selection is active
+  const displayName = city ? city.name : country?.properties.NAME ?? '';
+  const subtitle = city ? city.country : null;
+
   const isVisited = Boolean(visitedData);
   const [notes, setNotes] = useState(visitedData?.notes ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -33,29 +41,29 @@ export default function CountryPanel({
 
   // Log what data the panel receives when it opens or data changes
   useEffect(() => {
-    console.log('[CountryPanel] opened/updated —', country.properties.NAME, {
+    console.log('[CountryPanel] opened/updated —', displayName, {
       isVisited,
       visitedData,
       notesFromDB: visitedData?.notes ?? '(none)',
     });
     setNotes(visitedData?.notes ?? '');
     setSaveStatus('idle');
-  }, [visitedData, country.properties.NAME, isVisited]);
+  }, [visitedData, displayName, isVisited]);
 
   const handleMarkVisited = async () => {
-    console.log('[CountryPanel] Mark as visited clicked —', country.properties.NAME);
+    console.log('[CountryPanel] Mark as visited clicked —', displayName);
     const ok = await onMarkVisited(notesRef.current);
     console.log('[CountryPanel] markVisited result:', ok ? 'SUCCESS' : 'FAILED');
   };
 
   const handleRemoveVisited = () => {
-    console.log('[CountryPanel] Remove visited clicked —', country.properties.NAME);
+    console.log('[CountryPanel] Remove visited clicked —', displayName);
     onRemoveVisited();
   };
 
   const handleSaveNotes = async () => {
     const currentNotes = notesRef.current;
-    console.log('[CountryPanel] Save notes clicked —', country.properties.NAME, {
+    console.log('[CountryPanel] Save notes clicked —', displayName, {
       notes: currentNotes,
       isVisited,
     });
@@ -83,7 +91,10 @@ export default function CountryPanel({
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
-        <h2 style={styles.name}>{country.properties.NAME}</h2>
+        <div>
+          <h2 style={styles.name}>{displayName}</h2>
+          {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
+        </div>
         <button style={styles.closeBtn} onClick={onClose} aria-label="Close panel">
           ✕
         </button>
@@ -171,6 +182,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: '#fff',
     margin: 0,
+  },
+  subtitle: {
+    fontSize: '0.8rem',
+    color: 'rgba(255, 255, 255, 0.5)',
+    margin: '0.15rem 0 0 0',
   },
   closeBtn: {
     background: 'none',

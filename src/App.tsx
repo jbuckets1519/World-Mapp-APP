@@ -10,7 +10,14 @@ import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
 import { useTravelPhotos } from './hooks/useTravelPhotos';
-import type { GeoJsonFeature } from './types';
+import { CITIES } from './data/cities';
+import type { GeoJsonFeature, CityPoint } from './types';
+
+// Pre-compute city points with stable IDs
+const CITY_POINTS: CityPoint[] = CITIES.map((c) => ({
+  ...c,
+  id: `city:${c.name}`,
+}));
 
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
@@ -46,6 +53,7 @@ export default function App() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
+  const [selectedCity, setSelectedCity] = useState<CityPoint | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showGallery, setShowGallery] = useState(false);
 
@@ -107,6 +115,23 @@ export default function App() {
         setSelectedId(id);
         setSelectedFeature(polygon);
       }
+      // Clear city selection when a polygon is clicked
+      setSelectedCity(null);
+    },
+    [selectedId],
+  );
+
+  const handleCityClick = useCallback(
+    (city: CityPoint) => {
+      if (city.id === selectedId) {
+        setSelectedId(null);
+        setSelectedCity(null);
+      } else {
+        setSelectedId(city.id);
+        setSelectedCity(city);
+      }
+      // Clear polygon selection when a city is clicked
+      setSelectedFeature(null);
     },
     [selectedId],
   );
@@ -114,23 +139,35 @@ export default function App() {
   const handleClose = useCallback(() => {
     setSelectedId(null);
     setSelectedFeature(null);
+    setSelectedCity(null);
     setShowGallery(false);
   }, []);
 
-  // Derive place type and ID from the selected feature for Supabase operations
-  const selectedPlaceType = selectedFeature?._isState ? 'state' : 'country';
-  const selectedPlaceId = selectedFeature ? getPolygonId(selectedFeature) : '';
-  const selectedPlaceName = selectedFeature?.properties.NAME ?? '';
-  const selectedVisitedData = selectedFeature
+  // Derive place type and ID from whichever item is selected (polygon or city)
+  const selectedPlaceType: 'country' | 'state' | 'city' = selectedCity
+    ? 'city'
+    : selectedFeature?._isState
+      ? 'state'
+      : 'country';
+  const selectedPlaceId = selectedCity
+    ? selectedCity.id
+    : selectedFeature
+      ? getPolygonId(selectedFeature)
+      : '';
+  const selectedPlaceName = selectedCity
+    ? selectedCity.name
+    : selectedFeature?.properties.NAME ?? '';
+  const hasSelection = Boolean(selectedFeature || selectedCity);
+  const selectedVisitedData = hasSelection
     ? getPlace(selectedPlaceType, selectedPlaceId)
     : undefined;
 
   // Load photos whenever the selected place changes
   useEffect(() => {
-    if (selectedFeature && user) {
+    if (hasSelection && user) {
       loadPhotos(selectedPlaceType, selectedPlaceId);
     }
-  }, [selectedFeature, user, selectedPlaceType, selectedPlaceId, loadPhotos]);
+  }, [hasSelection, user, selectedPlaceType, selectedPlaceId, loadPhotos]);
 
   const handlePhotoUpload = useCallback(
     (file: File) => uploadPhoto(selectedPlaceType, selectedPlaceId, file),
@@ -139,7 +176,7 @@ export default function App() {
 
   const handleMarkVisited = useCallback(async (notes: string): Promise<boolean> => {
     console.log('[App] handleMarkVisited →', { selectedPlaceType, selectedPlaceId, selectedPlaceName, notes });
-    return markVisited(selectedPlaceType as 'country' | 'state', selectedPlaceId, selectedPlaceName, notes);
+    return markVisited(selectedPlaceType, selectedPlaceId, selectedPlaceName, notes);
   }, [markVisited, selectedPlaceType, selectedPlaceId, selectedPlaceName]);
 
   const handleRemoveVisited = useCallback(async () => {
@@ -184,12 +221,15 @@ export default function App() {
     <>
       <Globe
         polygons={polygons}
+        cities={CITY_POINTS}
         selectedId={selectedId}
         visitedIds={visitedIds}
         visitedVersion={visitedVersion}
+        zoomLevel={zoomLevel}
         width={dimensions.width}
         height={dimensions.height}
         onPolygonClick={handlePolygonClick}
+        onCityClick={handleCityClick}
         onZoomChange={handleZoomChange}
       />
       <ZoomIndicator level={zoomLevel} />
@@ -199,9 +239,10 @@ export default function App() {
         <UserIndicator email={user.email ?? ''} onSignOut={signOut} />
       )}
 
-      {selectedFeature && (
+      {hasSelection && (
         <CountryPanel
           country={selectedFeature}
+          city={selectedCity}
           visitedData={selectedVisitedData}
           isLoggedIn={Boolean(user)}
           onMarkVisited={handleMarkVisited}
@@ -213,7 +254,7 @@ export default function App() {
         />
       )}
 
-      {showGallery && selectedFeature && (
+      {showGallery && hasSelection && (
         <PhotoGallery
           countryName={selectedPlaceName}
           photos={photos}

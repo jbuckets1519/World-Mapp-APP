@@ -20,3 +20,17 @@ export interface GeoJsonData {
   type: 'FeatureCollection';
   features: GeoJsonFeature[];
 }
+
+export interface City {
+  name: string;
+  country: string;
+  lat: number;
+  lng: number;
+  population: number;
+  isCapital: boolean;
+}
+
+/** City with a unique ID, used by the globe points layer and travel data */
+export interface CityPoint extends City {
+  id: string; // "city:Paris"
+}

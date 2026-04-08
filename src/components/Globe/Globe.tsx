@@ -1,17 +1,21 @@
 import { useEffect, useRef, useCallback } from 'react';
 import ReactGlobe, { type GlobeMethods } from 'react-globe.gl';
-import type { GeoJsonFeature } from '../../types';
+import type { GeoJsonFeature, CityPoint } from '../../types';
 
 interface GlobeProps {
   polygons: GeoJsonFeature[];
+  cities: CityPoint[];
   selectedId: string | null;
   /** Set of polygon IDs the user has marked as visited */
   visitedIds?: Set<string>;
   /** Increment this to force re-evaluation of visited colors */
   visitedVersion?: number;
+  /** Current zoom level 1–100, drives city dot size/visibility */
+  zoomLevel?: number;
   width?: number;
   height?: number;
   onPolygonClick?: (polygon: GeoJsonFeature) => void;
+  onCityClick?: (city: CityPoint) => void;
   onZoomChange?: (distance: number) => void;
 }
 
@@ -37,6 +41,14 @@ const VISITED_CAP = 'rgba(255, 160, 50, 0.35)';
 const VISITED_SIDE = 'rgba(255, 160, 50, 0.15)';
 const VISITED_STROKE = 'rgba(255, 160, 50, 0.5)';
 
+// --- City dot colors ---
+// Default: soft white to stay neutral against the blue globe
+const CITY_COLOR = 'rgba(220, 220, 230, 0.6)';
+// Visited: green to differentiate from orange visited-countries
+const CITY_VISITED_COLOR = 'rgba(80, 200, 120, 0.9)';
+// Selected: bright cyan matching the UI accent
+const CITY_SELECTED_COLOR = 'rgba(100, 220, 255, 1)';
+
 // --- Altitudes ---
 const COUNTRY_ALT = 0.005;
 const COUNTRY_SELECTED_ALT = 0.035;
@@ -52,12 +64,15 @@ export function getPolygonId(f: GeoJsonFeature): string {
 
 export default function Globe({
   polygons,
+  cities,
   selectedId,
   visitedIds,
   visitedVersion = 0,
+  zoomLevel = 1,
   width = window.innerWidth,
   height = window.innerHeight,
   onPolygonClick,
+  onCityClick,
   onZoomChange,
 }: GlobeProps) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
@@ -144,6 +159,57 @@ export default function Globe({
     [onPolygonClick],
   );
 
+  // --- City point accessors ---
+  // Scale dot size with zoom: tiny at low zoom, more visible zoomed in
+  const zoomRef = useRef(zoomLevel);
+  zoomRef.current = zoomLevel;
+
+  const getCityRadius = useCallback(
+    (pt: object) => {
+      const city = pt as CityPoint;
+      const z = zoomRef.current;
+      // Base size scales from 0.08 at zoom 1 to 0.35 at zoom 100
+      const base = 0.08 + (z / 100) * 0.27;
+      // Capitals and megacities get a slight bump
+      const bonus = city.isCapital || city.population > 10_000_000 ? 0.04 : 0;
+      // Selected city is extra prominent
+      if (city.id === selectedId) return base + bonus + 0.15;
+      return base + bonus;
+    },
+    [selectedId, zoomLevel],
+  );
+
+  const getCityColor = useCallback(
+    (pt: object) => {
+      const city = pt as CityPoint;
+      if (city.id === selectedId) return CITY_SELECTED_COLOR;
+      if (visitedRef.current?.has(city.id)) return CITY_VISITED_COLOR;
+      return CITY_COLOR;
+    },
+    [selectedId, visitedVersion],
+  );
+
+  const getCityLabel = useCallback((pt: object) => {
+    const city = pt as CityPoint;
+    return `<b>${city.name}</b><br/><span style="color:rgba(255,255,255,0.6)">${city.country}</span>`;
+  }, []);
+
+  const getCityAltitude = useCallback(
+    (pt: object) => {
+      const city = pt as CityPoint;
+      // Lift selected city slightly above polygons
+      return city.id === selectedId ? 0.04 : 0.01;
+    },
+    [selectedId],
+  );
+
+  const handleCityClick = useCallback(
+    (pt: object) => {
+      onCityClick?.(pt as CityPoint);
+    },
+    [onCityClick],
+  );
+
   return (
     <ReactGlobe
       ref={globeRef}
@@ -161,6 +227,17 @@ export default function Globe({
       polygonAltitude={getAltitude}
       polygonsTransitionDuration={300}
       onPolygonClick={handleClick}
+      pointsData={cities}
+      pointLat="lat"
+      pointLng="lng"
+      pointColor={getCityColor}
+      pointRadius={getCityRadius}
+      pointAltitude={getCityAltitude}
+      pointLabel={getCityLabel}
+      pointResolution={12}
+      pointsMerge={false}
+      pointsTransitionDuration={300}
+      onPointClick={handleCityClick}
     />
   );
 }

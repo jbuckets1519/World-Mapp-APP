@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export interface VisitedPlace {
   id: string;
-  place_type: 'country' | 'state';
+  place_type: 'country' | 'state' | 'city';
   place_id: string;
   place_name: string;
   notes: string;
@@ -113,7 +113,7 @@ export function useTravelData(userId: string | null) {
   // Mark a place as visited, optionally with initial notes.
   // Returns true on success, false on failure.
   const markVisited = useCallback(
-    async (placeType: 'country' | 'state', placeId: string, placeName: string, notes = ''): Promise<boolean> => {
+    async (placeType: 'country' | 'state' | 'city', placeId: string, placeName: string, notes = ''): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) {
         console.log('[TravelData] markVisited skipped — userId:', userId, 'configured:', isSupabaseConfigured);
         return false;

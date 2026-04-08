@@ -8,7 +8,7 @@ import PhotoGallery from './components/CountryPanel/PhotoGallery';
 import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
 import { FriendsPanel, FriendOverlay } from './components/Friends';
-import { AuthOverlay, UserIndicator, ProfileEditor, ProfileView } from './components/Auth';
+import { AuthOverlay, UserIndicator, ProfileEditor, ProfileView, ProfileSetup } from './components/Auth';
 import PerfMonitor from './components/PerfMonitor';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
@@ -63,9 +63,11 @@ export default function App() {
 
   const {
     profile,
+    loading: profileLoading,
     saving: profileSaving,
     updateProfile,
     uploadAvatar,
+    reload: reloadProfile,
   } = useProfile(user?.id ?? null);
 
   const {
@@ -94,6 +96,9 @@ export default function App() {
 
   // Are we viewing a friend's map? This drives the entire UI mode.
   const isFriendView = Boolean(activeFriendId);
+
+  // New user needs profile setup if logged in, profile loaded, and no username yet
+  const needsProfileSetup = Boolean(user && !profileLoading && profile && !profile.username);
 
   const rafRef = useRef(0);
   const handleZoomChange = useCallback((distance: number) => {
@@ -351,6 +356,17 @@ export default function App() {
       )}
 
       {!user && <AuthOverlay onSignIn={signIn} onSignUp={signUp} />}
+
+      {/* First-time profile setup — blocks the app until username is set */}
+      {needsProfileSetup && profile && (
+        <ProfileSetup
+          profile={profile}
+          saving={profileSaving}
+          onSave={updateProfile}
+          onUploadAvatar={uploadAvatar}
+          onComplete={reloadProfile}
+        />
+      )}
       {user && (
         <>
           <UserIndicator

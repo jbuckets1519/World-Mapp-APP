@@ -147,11 +147,11 @@ export default function App() {
     return lakes.length > 0 ? [...countries, ...lakes] : countries;
   }, [countries, lakes]);
 
+  // Lakes are excluded at state zoom — they render above states and create dark holes
   const withStates = useMemo(() => {
     if (countries.length === 0) return [];
-    const base = subdivisions.length > 0 ? [...countries, ...subdivisions] : countries;
-    return lakes.length > 0 ? [...base, ...lakes] : base;
-  }, [countries, subdivisions, lakes]);
+    return subdivisions.length > 0 ? [...countries, ...subdivisions] : countries;
+  }, [countries, subdivisions]);
 
   const polygons = showStates ? withStates : countriesOnly;
 

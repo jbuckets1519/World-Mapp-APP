@@ -5,6 +5,10 @@ import type { GeoJsonFeature, GeoJsonData, CityPoint } from '../types';
 const COUNTRIES_URL =
   'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
 
+// 50m lakes — major inland water bodies (Great Lakes, Caspian Sea, etc.)
+const LAKES_URL =
+  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_lakes.geojson';
+
 // 10m populated places — ~7,300 cities with SCALERANK for tiering
 const CITIES_URL =
   'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_populated_places_simple.geojson';
@@ -106,6 +110,7 @@ function parseCityFeature(feat: { properties: Record<string, unknown>; geometry:
 export function useGlobeConfig() {
   const [countries, setCountries] = useState<GeoJsonFeature[]>([]);
   const [subdivisions, setSubdivisions] = useState<GeoJsonFeature[]>([]);
+  const [lakes, setLakes] = useState<GeoJsonFeature[]>([]);
   const [cities, setCities] = useState<CityPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,6 +164,26 @@ export function useGlobeConfig() {
         });
     });
 
+    // --- Lakes (optional — purely visual) ---
+    fetch(LAKES_URL)
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json() as Promise<GeoJsonData>;
+      })
+      .then((data) => {
+        if (!data || cancelled) return;
+        const lakeFeatures = data.features.map((f) => ({
+          ...f,
+          _isLake: true as const,
+          properties: { ...f.properties, NAME: (f.properties.name ?? f.properties.NAME ?? 'Lake') as string },
+        }));
+        setLakes(lakeFeatures);
+        console.log(`[GlobeConfig] loaded ${lakeFeatures.length} lakes`);
+      })
+      .catch((err) => {
+        console.error('[GlobeConfig] lakes load ERROR:', err.message);
+      });
+
     // --- Populated places (optional — globe works without them) ---
     fetch(CITIES_URL)
       .then((res) => {
@@ -197,5 +222,5 @@ export function useGlobeConfig() {
     return () => { cancelled = true; };
   }, []);
 
-  return { countries, subdivisions, cities, loading, error };
+  return { countries, subdivisions, lakes, cities, loading, error };
 }

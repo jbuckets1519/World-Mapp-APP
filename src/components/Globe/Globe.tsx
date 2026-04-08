@@ -60,12 +60,17 @@ const CITY_VISITED_COLOR = 'rgba(80, 200, 120, 0.9)';
 // Selected: bright cyan matching the UI accent
 const CITY_SELECTED_COLOR = 'rgba(100, 220, 255, 1)';
 
+// --- Lake colors (match ocean / globe background) ---
+const LAKE_CAP = 'rgba(0, 5, 15, 0.9)';
+const LAKE_SIDE = 'rgba(0, 5, 15, 0.4)';
+
 // --- Altitudes ---
 const COUNTRY_ALT = 0.005;
 const COUNTRY_SELECTED_ALT = 0.035;
 const VISITED_ALT = 0.008;
 const STATE_ALT = 0.006;
 const STATE_SELECTED_ALT = 0.037;
+const LAKE_ALT = 0.009;
 
 export function getPolygonId(f: GeoJsonFeature): string {
   const prefix = f._isState ? 'state' : 'country';
@@ -133,6 +138,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getCapColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
+      if (f._isLake) return LAKE_CAP;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_CAP : COUNTRY_SELECTED_CAP;
       if (visitedRef.current?.has(id)) return isPurple ? PURPLE_VISITED_CAP : VISITED_CAP;
@@ -144,6 +150,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getSideColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
+      if (f._isLake) return LAKE_SIDE;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_SIDE : COUNTRY_SELECTED_SIDE;
       if (visitedRef.current?.has(id)) return isPurple ? PURPLE_VISITED_SIDE : VISITED_SIDE;
@@ -154,6 +161,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
 
   const getStrokeColor = useCallback((feat: object) => {
     const f = feat as GeoJsonFeature;
+    if (f._isLake) return 'rgba(0, 0, 0, 0)';
     const id = getPolygonId(f);
     if (visitedRef.current?.has(id)) return isPurple ? PURPLE_VISITED_STROKE : VISITED_STROKE;
     return f._isState ? STATE_STROKE : COUNTRY_STROKE;
@@ -162,6 +170,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getAltitude = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
+      if (f._isLake) return LAKE_ALT;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_ALT : COUNTRY_SELECTED_ALT;
       if (visitedRef.current?.has(id)) return VISITED_ALT;
@@ -170,13 +179,18 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     [selectedId, visitedVersion],
   );
 
+  // Lakes get no label or click handling
   const getLabel = useCallback((feat: object) => {
-    return (feat as GeoJsonFeature).properties.NAME;
+    const f = feat as GeoJsonFeature;
+    if (f._isLake) return '';
+    return f.properties.NAME;
   }, []);
 
   const handleClick = useCallback(
     (feat: object) => {
-      onPolygonClick?.(feat as GeoJsonFeature);
+      const f = feat as GeoJsonFeature;
+      if (f._isLake) return;
+      onPolygonClick?.(f);
     },
     [onPolygonClick],
   );

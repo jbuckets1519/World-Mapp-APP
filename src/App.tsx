@@ -30,7 +30,7 @@ function distanceToZoomLevel(distance: number): number {
 }
 
 export default function App() {
-  const { countries, subdivisions, cities: allCities, loading: globeLoading, error: globeError } = useGlobeConfig();
+  const { countries, subdivisions, lakes, cities: allCities, loading: globeLoading, error: globeError } = useGlobeConfig();
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
   const {
     visitedIds,
@@ -137,14 +137,15 @@ export default function App() {
   }, [allCities, maxScaleRank]);
 
   const countriesOnly = useMemo(() => {
-    return countries.length > 0 ? countries : [];
-  }, [countries]);
+    if (countries.length === 0) return [];
+    return lakes.length > 0 ? [...countries, ...lakes] : countries;
+  }, [countries, lakes]);
 
   const withStates = useMemo(() => {
     if (countries.length === 0) return [];
-    if (subdivisions.length === 0) return countries;
-    return [...countries, ...subdivisions];
-  }, [countries, subdivisions]);
+    const base = subdivisions.length > 0 ? [...countries, ...subdivisions] : countries;
+    return lakes.length > 0 ? [...base, ...lakes] : base;
+  }, [countries, subdivisions, lakes]);
 
   const polygons = showStates ? withStates : countriesOnly;
 

@@ -14,6 +14,8 @@ export interface GeoJsonFeature {
   };
   /** Marker added at load time so the globe can style states differently */
   _isState?: boolean;
+  /** Marker for lake polygons — purely visual, non-interactive */
+  _isLake?: boolean;
 }
 
 export interface GeoJsonData {

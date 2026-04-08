@@ -190,13 +190,13 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     (pt: object) => {
       const city = pt as CityPoint;
       const z = zoomRef.current;
-      // Base size scales from 0.08 at zoom 1 to 0.35 at zoom 100
-      const base = 0.08 + (z / 100) * 0.27;
-      // Capitals and megacities get a slight bump
-      const bonus = city.isCapital || city.population > 10_000_000 ? 0.04 : 0;
+      // Base size scales with zoom
+      const base = 0.06 + (z / 100) * 0.22;
+      // More important cities (lower scaleRank) are slightly larger
+      const rankBonus = Math.max(0, (5 - city.scaleRank) * 0.015);
       // Selected city is extra prominent
-      if (city.id === selectedId) return base + bonus + 0.15;
-      return base + bonus;
+      if (city.id === selectedId) return base + rankBonus + 0.15;
+      return base + rankBonus;
     },
     [selectedId, zoomLevel],
   );

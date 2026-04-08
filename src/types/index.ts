@@ -30,9 +30,11 @@ export interface City {
   isCapital: boolean;
 }
 
-/** City with a unique ID, used by the globe points layer and travel data */
+/** City with a unique ID and scale rank, used by the globe points layer */
 export interface CityPoint extends City {
   id: string; // "city:Paris"
+  /** Natural Earth SCALERANK 0–10 — lower = more important */
+  scaleRank: number;
 }
 
 /** A user profile as returned from the profiles table */

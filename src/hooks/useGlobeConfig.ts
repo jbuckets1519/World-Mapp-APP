@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
-import type { GeoJsonFeature, GeoJsonData } from '../types';
+import type { GeoJsonFeature, GeoJsonData, CityPoint } from '../types';
 
-// Country boundaries — Natural Earth 110m
+// 50m countries — includes small island nations missing from 110m
 const COUNTRIES_URL =
-  'https://raw.githubusercontent.com/vasturiano/react-globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson';
+  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
+
+// 10m populated places — ~7,300 cities with SCALERANK for tiering
+const CITIES_URL =
+  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_populated_places_simple.geojson';
 
 // Subdivision boundaries (states, provinces, territories)
 const SUBDIVISION_SOURCES = [
   {
     url: 'https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json',
     nameKey: 'name',
-    // Filter out non-state territories; fix Virginia's MultiPolygon raycasting bug
     filter: (name: string) => name !== 'Puerto Rico',
     fixGeometry: (name: string, feat: GeoJsonFeature) => {
       if (name === 'Virginia' && feat.geometry.type === 'MultiPolygon') {
@@ -67,32 +70,69 @@ function normalizeSubdivision(
 }
 
 /**
- * Fetches country boundaries + subdivision boundaries for supported countries.
- * Subdivisions are optional — if any fail, the globe still works.
+ * Parse a Natural Earth populated places GeoJSON feature into a CityPoint.
+ */
+function parseCityFeature(feat: { properties: Record<string, unknown>; geometry: { coordinates: number[] } }): CityPoint | null {
+  const props = feat.properties;
+  const name = (props.name ?? props.NAME ?? props.nameascii ?? '') as string;
+  if (!name) return null;
+
+  const country = (props.adm0name ?? props.ADM0NAME ?? '') as string;
+  const scaleRank = (props.scalerank ?? props.SCALERANK ?? 10) as number;
+  const population = (props.pop_max ?? props.POP_MAX ?? 0) as number;
+  const featureClass = ((props.featurecla ?? props.FEATURECLA ?? '') as string).toLowerCase();
+  const isCapital = featureClass.includes('capital');
+
+  // Coordinates from GeoJSON geometry [lng, lat]
+  const lng = feat.geometry.coordinates[0];
+  const lat = feat.geometry.coordinates[1];
+  if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+
+  return {
+    id: `city:${name}`,
+    name,
+    country,
+    lat,
+    lng,
+    population,
+    isCapital,
+    scaleRank,
+  };
+}
+
+/**
+ * Fetches country boundaries, subdivision boundaries, and populated places.
  */
 export function useGlobeConfig() {
   const [countries, setCountries] = useState<GeoJsonFeature[]>([]);
   const [subdivisions, setSubdivisions] = useState<GeoJsonFeature[]>([]);
+  const [cities, setCities] = useState<CityPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Countries are required
+    let cancelled = false;
+
+    // --- Countries (required) ---
     fetch(COUNTRIES_URL)
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to fetch countries: ${res.status}`);
         return res.json() as Promise<GeoJsonData>;
       })
       .then((data) => {
-        setCountries(data.features);
-        setLoading(false);
+        if (!cancelled) {
+          setCountries(data.features);
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        setError(err.message);
-        setLoading(false);
+        if (!cancelled) {
+          setError(err.message);
+          setLoading(false);
+        }
       });
 
-    // Subdivisions are optional — each source loads independently
+    // --- Subdivisions (optional) ---
     const allSubdivisions: GeoJsonFeature[] = [];
     let pending = SUBDIVISION_SOURCES.length;
 
@@ -110,17 +150,49 @@ export function useGlobeConfig() {
             allSubdivisions.push(...normalized);
           }
         })
-        .catch(() => {
-          // This source failed — continue without it
-        })
+        .catch(() => {})
         .finally(() => {
           pending--;
-          if (pending === 0) {
+          if (pending === 0 && !cancelled) {
             setSubdivisions([...allSubdivisions]);
           }
         });
     });
+
+    // --- Populated places (optional — globe works without them) ---
+    fetch(CITIES_URL)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
+        return res.json();
+      })
+      .then((data: { features: Array<{ properties: Record<string, unknown>; geometry: { coordinates: number[] } }> }) => {
+        if (cancelled) return;
+        const parsed = data.features
+          .map(parseCityFeature)
+          .filter((c): c is CityPoint => c !== null);
+
+        // Deduplicate by id — keep the one with better (lower) scaleRank
+        const seen = new Map<string, CityPoint>();
+        for (const city of parsed) {
+          const existing = seen.get(city.id);
+          if (!existing || city.scaleRank < existing.scaleRank) {
+            seen.set(city.id, city);
+          }
+        }
+
+        const deduplicated = [...seen.values()];
+        // Sort by importance so the most important cities are first
+        deduplicated.sort((a, b) => a.scaleRank - b.scaleRank);
+
+        console.log(`[GlobeConfig] loaded ${deduplicated.length} cities from Natural Earth 10m`);
+        setCities(deduplicated);
+      })
+      .catch((err) => {
+        console.error('[GlobeConfig] cities load ERROR:', err.message);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
-  return { countries, subdivisions, loading, error };
+  return { countries, subdivisions, cities, loading, error };
 }

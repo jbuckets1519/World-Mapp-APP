@@ -16,13 +16,7 @@ import { useTravelPhotos } from './hooks/useTravelPhotos';
 import { useFriends } from './hooks/useFriends';
 import { useFriendData } from './hooks/useFriendData';
 import { useProfile } from './hooks/useProfile';
-import { CITIES } from './data/cities';
 import type { GeoJsonFeature, CityPoint } from './types';
-
-const CITY_POINTS: CityPoint[] = CITIES.map((c) => ({
-  ...c,
-  id: `city:${c.name}`,
-}));
 
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
@@ -36,7 +30,7 @@ function distanceToZoomLevel(distance: number): number {
 }
 
 export default function App() {
-  const { countries, subdivisions, loading: globeLoading, error: globeError } = useGlobeConfig();
+  const { countries, subdivisions, cities: allCities, loading: globeLoading, error: globeError } = useGlobeConfig();
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
   const {
     visitedIds,
@@ -128,6 +122,22 @@ export default function App() {
       setShowStates(false);
     }
   }, [zoomLevel, showStates]);
+
+  // Tier cities by zoom: only show top-ranked at low zoom, reveal more as user zooms in.
+  // Uses discrete breakpoints so the filtered array only recomputes at thresholds.
+  const maxScaleRank = useMemo(() => {
+    if (zoomLevel < 10) return 1;   // ~30 major world cities
+    if (zoomLevel < 25) return 3;   // ~150 cities
+    if (zoomLevel < 40) return 5;   // ~500 cities
+    if (zoomLevel < 55) return 6;   // ~1000 cities
+    if (zoomLevel < 70) return 8;   // ~3000 cities
+    if (zoomLevel < 85) return 9;   // ~5000 cities
+    return 10;                       // all ~7300 cities
+  }, [zoomLevel]);
+
+  const visibleCities = useMemo(() => {
+    return allCities.filter((c) => c.scaleRank <= maxScaleRank);
+  }, [allCities, maxScaleRank]);
 
   const countriesOnly = useMemo(() => {
     return countries.length > 0 ? countries : [];
@@ -308,7 +318,7 @@ export default function App() {
       <Globe
         ref={globeRef}
         polygons={polygons}
-        cities={CITY_POINTS}
+        cities={visibleCities}
         selectedId={selectedId}
         visitedIds={globeVisitedIds}
         visitedVersion={globeVisitedVersion}
@@ -321,7 +331,7 @@ export default function App() {
         onZoomChange={handleZoomChange}
       />
       <SearchBar
-        cities={CITY_POINTS}
+        cities={allCities}
         polygons={polygons}
         onSelectCity={handleSearchSelectCity}
         onSelectPolygon={handleSearchSelectPolygon}

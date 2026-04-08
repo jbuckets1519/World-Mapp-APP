@@ -1,6 +1,11 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import ReactGlobe, { type GlobeMethods } from 'react-globe.gl';
 import type { GeoJsonFeature, CityPoint } from '../../types';
+
+/** Methods exposed to parent via ref */
+export interface GlobeHandle {
+  flyTo: (lat: number, lng: number, altitude?: number) => void;
+}
 
 interface GlobeProps {
   polygons: GeoJsonFeature[];
@@ -62,7 +67,7 @@ export function getPolygonId(f: GeoJsonFeature): string {
 }
 
 
-export default function Globe({
+const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   polygons,
   cities,
   selectedId,
@@ -74,8 +79,16 @@ export default function Globe({
   onPolygonClick,
   onCityClick,
   onZoomChange,
-}: GlobeProps) {
+}, ref) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
+
+  // Expose flyTo so the parent can move the camera (e.g. from search)
+  useImperativeHandle(ref, () => ({
+    flyTo(lat: number, lng: number, altitude = 1.5) {
+      globeRef.current?.pointOfView({ lat, lng, altitude }, 1000);
+    },
+  }));
+
   // Store visitedIds in a ref so accessor functions can read it
   // without needing it as a dependency (avoids accessor recreation)
   const visitedRef = useRef(visitedIds);
@@ -240,4 +253,6 @@ export default function Globe({
       onPointClick={handleCityClick}
     />
   );
-}
+});
+
+export default GlobeComponent;

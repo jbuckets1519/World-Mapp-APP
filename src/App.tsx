@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 import { Globe } from './components/Globe';
+import type { GlobeHandle } from './components/Globe';
 import { getPolygonId } from './components/Globe/Globe';
 import { CountryPanel } from './components/CountryPanel';
 import PhotoGallery from './components/CountryPanel/PhotoGallery';
 import { ZoomIndicator } from './components/ZoomIndicator';
+import { SearchBar } from './components/SearchBar';
 import { AuthOverlay, UserIndicator } from './components/Auth';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
@@ -50,6 +52,8 @@ export default function App() {
     uploadPhoto,
     deletePhoto,
   } = useTravelPhotos(user?.id ?? null);
+
+  const globeRef = useRef<GlobeHandle>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
@@ -136,6 +140,24 @@ export default function App() {
     [selectedId],
   );
 
+  // Search result handlers — select the item and let the SearchBar fly the camera
+  const handleSearchSelectCity = useCallback((city: CityPoint) => {
+    setSelectedId(city.id);
+    setSelectedCity(city);
+    setSelectedFeature(null);
+  }, []);
+
+  const handleSearchSelectPolygon = useCallback((polygon: GeoJsonFeature) => {
+    const id = getPolygonId(polygon);
+    setSelectedId(id);
+    setSelectedFeature(polygon);
+    setSelectedCity(null);
+  }, []);
+
+  const handleFlyTo = useCallback((lat: number, lng: number) => {
+    globeRef.current?.flyTo(lat, lng);
+  }, []);
+
   const handleClose = useCallback(() => {
     setSelectedId(null);
     setSelectedFeature(null);
@@ -220,6 +242,7 @@ export default function App() {
   return (
     <>
       <Globe
+        ref={globeRef}
         polygons={polygons}
         cities={CITY_POINTS}
         selectedId={selectedId}
@@ -231,6 +254,13 @@ export default function App() {
         onPolygonClick={handlePolygonClick}
         onCityClick={handleCityClick}
         onZoomChange={handleZoomChange}
+      />
+      <SearchBar
+        cities={CITY_POINTS}
+        polygons={polygons}
+        onSelectCity={handleSearchSelectCity}
+        onSelectPolygon={handleSearchSelectPolygon}
+        onFlyTo={handleFlyTo}
       />
       <ZoomIndicator level={zoomLevel} />
 

@@ -8,13 +8,14 @@ import PhotoGallery from './components/CountryPanel/PhotoGallery';
 import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
 import { FriendsPanel, FriendOverlay } from './components/Friends';
-import { AuthOverlay, UserIndicator } from './components/Auth';
+import { AuthOverlay, UserIndicator, ProfileEditor } from './components/Auth';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
 import { useTravelPhotos } from './hooks/useTravelPhotos';
 import { useFriends } from './hooks/useFriends';
 import { useFriendData } from './hooks/useFriendData';
+import { useProfile } from './hooks/useProfile';
 import { CITIES } from './data/cities';
 import type { GeoJsonFeature, CityPoint } from './types';
 
@@ -67,6 +68,13 @@ export default function App() {
   } = useFriends(user?.id ?? null);
 
   const {
+    profile,
+    saving: profileSaving,
+    updateProfile,
+    uploadAvatar,
+  } = useProfile(user?.id ?? null);
+
+  const {
     friendVisitedIds,
     activeFriendId,
     version: friendVersion,
@@ -88,6 +96,7 @@ export default function App() {
   const [showGallery, setShowGallery] = useState(false);
   const [showFriendGallery, setShowFriendGallery] = useState(false);
   const [friendsPanelOpen, setFriendsPanelOpen] = useState(false);
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
 
   const rafRef = useRef(0);
   const handleZoomChange = useCallback((distance: number) => {
@@ -316,7 +325,12 @@ export default function App() {
       {!user && <AuthOverlay onSignIn={signIn} onSignUp={signUp} />}
       {user && (
         <>
-          <UserIndicator email={user.email ?? ''} onSignOut={signOut} />
+          <UserIndicator
+            email={user.email ?? ''}
+            profile={profile}
+            onSignOut={signOut}
+            onEditProfile={() => setShowProfileEditor(true)}
+          />
           <FriendsPanel
             following={following}
             followers={followers}
@@ -381,6 +395,17 @@ export default function App() {
           onUpload={async () => false}
           onDelete={async () => false}
           onClose={() => setShowFriendGallery(false)}
+        />
+      )}
+
+      {/* Profile editor modal */}
+      {showProfileEditor && profile && (
+        <ProfileEditor
+          profile={profile}
+          saving={profileSaving}
+          onSave={updateProfile}
+          onUploadAvatar={uploadAvatar}
+          onClose={() => setShowProfileEditor(false)}
         />
       )}
     </>

@@ -8,7 +8,7 @@ import type { UserProfile, FollowRelation } from '../types';
  *
  * Assumes the follows table has columns:
  *   id, follower_id, following_id, created_at
- * And profiles table has: id, display_name, email, is_public
+ * And profiles table has: id, username, display_name, email, avatar_url, bio, is_public
  */
 export function useFriends(userId: string | null) {
   const [following, setFollowing] = useState<FollowRelation[]>([]);
@@ -27,7 +27,7 @@ export function useFriends(userId: string | null) {
     // People I follow — join the profile of the person I'm following
     const { data: followingData, error: followingErr } = await supabase
       .from('follows')
-      .select('id, follower_id, following_id, created_at, profile:profiles!follows_following_id_fkey(id, display_name, email, is_public)')
+      .select('id, follower_id, following_id, created_at, profile:profiles!follows_following_id_fkey(id, username, display_name, email, avatar_url, bio, is_public)')
       .eq('follower_id', userId)
       .order('created_at', { ascending: false });
 
@@ -48,7 +48,7 @@ export function useFriends(userId: string | null) {
     // People who follow me — join the profile of the follower
     const { data: followersData, error: followersErr } = await supabase
       .from('follows')
-      .select('id, follower_id, following_id, created_at, profile:profiles!follows_follower_id_fkey(id, display_name, email, is_public)')
+      .select('id, follower_id, following_id, created_at, profile:profiles!follows_follower_id_fkey(id, username, display_name, email, avatar_url, bio, is_public)')
       .eq('following_id', userId)
       .order('created_at', { ascending: false });
 
@@ -79,7 +79,7 @@ export function useFriends(userId: string | null) {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, email, is_public')
+        .select('id, username, display_name, email, avatar_url, bio, is_public')
         .ilike('email', `%${query}%`)
         .neq('id', userId) // don't show yourself
         .limit(8);

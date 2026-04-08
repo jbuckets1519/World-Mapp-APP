@@ -10,7 +10,6 @@ interface SearchResult {
   type: 'city' | 'country' | 'state';
   lat: number;
   lng: number;
-  // Original data for selection callbacks
   city?: CityPoint;
   polygon?: GeoJsonFeature;
 }
@@ -20,7 +19,6 @@ interface SearchBarProps {
   polygons: GeoJsonFeature[];
   onSelectCity: (city: CityPoint) => void;
   onSelectPolygon: (polygon: GeoJsonFeature) => void;
-  /** Fly the globe camera to a location */
   onFlyTo: (lat: number, lng: number) => void;
 }
 
@@ -31,10 +29,8 @@ function getPolygonCentroid(feature: GeoJsonFeature): { lat: number; lng: number
   let sumLng = 0;
   let count = 0;
 
-  // Flatten all rings/polygons to get coordinate pairs
   const flatten = (arr: unknown[]): void => {
     if (typeof arr[0] === 'number') {
-      // This is a [lng, lat] pair
       sumLng += arr[0] as number;
       sumLat += arr[1] as number;
       count++;
@@ -58,13 +54,14 @@ export default function SearchBar({
   onSelectPolygon,
   onFlyTo,
 }: SearchBarProps) {
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Build a flat searchable index from cities + polygons
+  // Build searchable index from cities + polygons
   const allResults = useMemo((): SearchResult[] => {
     const results: SearchResult[] = [];
 
@@ -107,7 +104,6 @@ export default function SearchBar({
         r.label.toLowerCase().includes(lower) ||
         r.subtitle.toLowerCase().includes(lower),
     );
-    // Sort: exact start matches first, then by label length (shorter = more relevant)
     matches.sort((a, b) => {
       const aStarts = a.label.toLowerCase().startsWith(lower) ? 0 : 1;
       const bStarts = b.label.toLowerCase().startsWith(lower) ? 0 : 1;
@@ -117,29 +113,35 @@ export default function SearchBar({
     return matches.slice(0, 8);
   }, [query, allResults]);
 
-  // Reset highlight when results change
   useEffect(() => {
     setHighlightIndex(0);
   }, [filtered]);
 
+  // Focus the input when expanding
+  useEffect(() => {
+    if (expanded) {
+      // Small delay so the input is rendered before focusing
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [expanded]);
+
+  const collapse = useCallback(() => {
+    setExpanded(false);
+    setQuery('');
+    setDropdownOpen(false);
+  }, []);
+
   const selectResult = useCallback(
     (result: SearchResult) => {
-      // Fly camera to the location
       onFlyTo(result.lat, result.lng);
-
-      // Select the item
       if (result.city) {
         onSelectCity(result.city);
       } else if (result.polygon) {
         onSelectPolygon(result.polygon);
       }
-
-      // Close search
-      setQuery('');
-      setIsOpen(false);
-      inputRef.current?.blur();
+      collapse();
     },
-    [onFlyTo, onSelectCity, onSelectPolygon],
+    [onFlyTo, onSelectCity, onSelectPolygon, collapse],
   );
 
   const handleKeyDown = useCallback(
@@ -154,42 +156,66 @@ export default function SearchBar({
         e.preventDefault();
         selectResult(filtered[highlightIndex]);
       } else if (e.key === 'Escape') {
-        setQuery('');
-        setIsOpen(false);
-        inputRef.current?.blur();
+        collapse();
       }
     },
-    [filtered, highlightIndex, selectResult],
+    [filtered, highlightIndex, selectResult, collapse],
   );
 
-  // Close dropdown when clicking outside
+  // Close when clicking outside
   useEffect(() => {
+    if (!expanded) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+        collapse();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [expanded, collapse]);
 
-  const showDropdown = isOpen && filtered.length > 0;
+  const showDropdown = dropdownOpen && filtered.length > 0;
 
+  // --- Collapsed: just the magnifying glass icon ---
+  if (!expanded) {
+    return (
+      <button
+        style={styles.iconBtn}
+        onClick={() => setExpanded(true)}
+        aria-label="Search"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(100, 180, 255, 0.8)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="16.5" y1="16.5" x2="21" y2="21" />
+        </svg>
+      </button>
+    );
+  }
+
+  // --- Expanded: input + dropdown ---
   return (
     <div ref={containerRef} style={styles.container}>
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder="Search cities, countries, states..."
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setIsOpen(true);
-        }}
-        onFocus={() => setIsOpen(true)}
-        onKeyDown={handleKeyDown}
-        style={styles.input}
-      />
+      <div style={styles.inputRow}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(100, 180, 255, 0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <circle cx="11" cy="11" r="7" />
+          <line x1="16.5" y1="16.5" x2="21" y2="21" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search cities, countries, states..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setDropdownOpen(true);
+          }}
+          onKeyDown={handleKeyDown}
+          style={styles.input}
+        />
+        <button style={styles.closeBtn} onClick={collapse} aria-label="Close search">
+          ✕
+        </button>
+      </div>
 
       {showDropdown && (
         <div style={styles.dropdown}>
@@ -219,27 +245,61 @@ export default function SearchBar({
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  // Collapsed icon button — sits below the zoom indicator
+  iconBtn: {
+    position: 'fixed',
+    top: '3.2rem',
+    left: '1rem',
+    width: '34px',
+    height: '34px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(15, 15, 25, 0.7)',
+    border: '1px solid rgba(100, 180, 255, 0.15)',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    zIndex: 20,
+  },
+  // Expanded container — same top-left position
   container: {
     position: 'fixed',
-    top: '1rem',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '320px',
+    top: '3.2rem',
+    left: '1rem',
+    width: '300px',
     maxWidth: 'calc(100vw - 2rem)',
     zIndex: 20,
   },
-  input: {
-    width: '100%',
-    padding: '0.6rem 1rem',
-    background: 'rgba(15, 15, 25, 0.85)',
+  inputRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.45rem 0.7rem',
+    background: 'rgba(15, 15, 25, 0.9)',
     backdropFilter: 'blur(12px)',
     border: '1px solid rgba(100, 180, 255, 0.25)',
     borderRadius: '10px',
+  },
+  input: {
+    flex: 1,
+    background: 'none',
+    border: 'none',
     color: '#fff',
-    fontSize: '0.9rem',
+    fontSize: '0.85rem',
     fontFamily: 'inherit',
     outline: 'none',
-    boxSizing: 'border-box' as const,
+    padding: 0,
+    minWidth: 0,
+  },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: '0.9rem',
+    cursor: 'pointer',
+    padding: '0 0.15rem',
+    lineHeight: 1,
+    flexShrink: 0,
   },
   dropdown: {
     marginTop: '4px',

@@ -65,12 +65,14 @@ const LAKE_CAP = 'rgba(0, 5, 15, 0.9)';
 const LAKE_SIDE = 'rgba(0, 5, 15, 0.4)';
 
 // --- Altitudes ---
+// Lakes sit below everything so state/country polygons cover any overlap onto land.
+// Gaps between country/state shorelines (like the Great Lakes) still show the lake.
+const LAKE_ALT = 0.004;
 const COUNTRY_ALT = 0.005;
 const COUNTRY_SELECTED_ALT = 0.035;
 const VISITED_ALT = 0.008;
 const STATE_ALT = 0.006;
 const STATE_SELECTED_ALT = 0.037;
-const LAKE_ALT = 0.009;
 
 export function getPolygonId(f: GeoJsonFeature): string {
   const prefix = f._isState ? 'state' : 'country';

@@ -19,28 +19,6 @@ import { useFriendData } from './hooks/useFriendData';
 import { useProfile } from './hooks/useProfile';
 import type { GeoJsonFeature, CityPoint } from './types';
 
-/**
- * Remove interior rings (holes) from a GeoJSON feature's geometry.
- * Country and state polygons often have interior rings that cut out lakes;
- * stripping them ensures solid land coverage at state zoom.
- */
-function stripInteriorRings(feat: GeoJsonFeature): GeoJsonFeature {
-  const { geometry } = feat;
-  if (geometry.type === 'Polygon') {
-    // Polygon coordinates: [outerRing, ...innerRings] — keep only outer
-    const coords = geometry.coordinates as number[][][];
-    if (coords.length <= 1) return feat;
-    return { ...feat, geometry: { ...geometry, coordinates: [coords[0]] } };
-  }
-  if (geometry.type === 'MultiPolygon') {
-    // Each sub-polygon: [outerRing, ...innerRings] — keep only outer of each
-    const coords = geometry.coordinates as number[][][][];
-    const stripped = coords.map((poly) => [poly[0]]);
-    return { ...feat, geometry: { ...geometry, coordinates: stripped } };
-  }
-  return feat;
-}
-
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
 const STATE_ZOOM_ON = 85;
@@ -169,15 +147,14 @@ export default function App() {
     return lakes.length > 0 ? [...countries, ...lakes] : countries;
   }, [countries, lakes]);
 
-  // Lakes are excluded at state zoom — they render above states and create dark holes.
-  // We also strip interior rings (lake cutouts baked into the GeoJSON geometry) from
-  // both countries and subdivisions so every piece of land is fully shaded.
+  // Lakes are included at state zoom too — they fill the gaps between state/country
+  // shorelines (e.g. the Great Lakes). Lakes render below states (altitude 0.004 < 0.006)
+  // so any coarse overlap onto land is hidden by the state polygon on top.
   const withStates = useMemo(() => {
     if (countries.length === 0) return [];
-    const solidCountries = countries.map(stripInteriorRings);
-    const solidStates = subdivisions.map(stripInteriorRings);
-    return solidStates.length > 0 ? [...solidCountries, ...solidStates] : solidCountries;
-  }, [countries, subdivisions]);
+    const base = lakes.length > 0 ? [...countries, ...lakes] : countries;
+    return subdivisions.length > 0 ? [...base, ...subdivisions] : base;
+  }, [countries, subdivisions, lakes]);
 
   const polygons = showStates ? withStates : countriesOnly;
 

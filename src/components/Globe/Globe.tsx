@@ -13,6 +13,8 @@ interface GlobeProps {
   selectedId: string | null;
   /** Set of polygon IDs the user has marked as visited */
   visitedIds?: Set<string>;
+  /** Set of polygon IDs a friend has visited (overlay) */
+  friendVisitedIds?: Set<string>;
   /** Increment this to force re-evaluation of visited colors */
   visitedVersion?: number;
   /** Current zoom level 1–100, drives city dot size/visibility */
@@ -46,11 +48,19 @@ const VISITED_CAP = 'rgba(255, 160, 50, 0.35)';
 const VISITED_SIDE = 'rgba(255, 160, 50, 0.15)';
 const VISITED_STROKE = 'rgba(255, 160, 50, 0.5)';
 
+// --- Friend visited colors (purple) ---
+const FRIEND_VISITED_CAP = 'rgba(180, 130, 255, 0.3)';
+const FRIEND_VISITED_SIDE = 'rgba(180, 130, 255, 0.12)';
+const FRIEND_VISITED_STROKE = 'rgba(180, 130, 255, 0.45)';
+const FRIEND_VISITED_ALT = 0.007;
+
 // --- City dot colors ---
 // Default: soft white to stay neutral against the blue globe
 const CITY_COLOR = 'rgba(220, 220, 230, 0.6)';
 // Visited: green to differentiate from orange visited-countries
 const CITY_VISITED_COLOR = 'rgba(80, 200, 120, 0.9)';
+// Friend visited: purple to match friend overlay theme
+const CITY_FRIEND_VISITED_COLOR = 'rgba(180, 130, 255, 0.85)';
 // Selected: bright cyan matching the UI accent
 const CITY_SELECTED_COLOR = 'rgba(100, 220, 255, 1)';
 
@@ -72,6 +82,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   cities,
   selectedId,
   visitedIds,
+  friendVisitedIds,
   visitedVersion = 0,
   zoomLevel = 1,
   width = window.innerWidth,
@@ -82,17 +93,18 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
 }, ref) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
 
-  // Expose flyTo so the parent can move the camera (e.g. from search)
   useImperativeHandle(ref, () => ({
     flyTo(lat: number, lng: number, altitude = 1.5) {
       globeRef.current?.pointOfView({ lat, lng, altitude }, 1000);
     },
   }));
 
-  // Store visitedIds in a ref so accessor functions can read it
-  // without needing it as a dependency (avoids accessor recreation)
+  // Store IDs in refs so accessor functions can read them
+  // without needing them as dependencies (avoids accessor recreation)
   const visitedRef = useRef(visitedIds);
   visitedRef.current = visitedIds;
+  const friendRef = useRef(friendVisitedIds);
+  friendRef.current = friendVisitedIds;
 
   useEffect(() => {
     const globe = globeRef.current;
@@ -127,6 +139,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_CAP : COUNTRY_SELECTED_CAP;
       if (visitedRef.current?.has(id)) return VISITED_CAP;
+      if (friendRef.current?.has(id)) return FRIEND_VISITED_CAP;
       return f._isState ? STATE_CAP : COUNTRY_CAP;
     },
     [selectedId, visitedVersion],
@@ -138,6 +151,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_SIDE : COUNTRY_SELECTED_SIDE;
       if (visitedRef.current?.has(id)) return VISITED_SIDE;
+      if (friendRef.current?.has(id)) return FRIEND_VISITED_SIDE;
       return f._isState ? STATE_SIDE : COUNTRY_SIDE;
     },
     [selectedId, visitedVersion],
@@ -147,6 +161,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     const f = feat as GeoJsonFeature;
     const id = getPolygonId(f);
     if (visitedRef.current?.has(id)) return VISITED_STROKE;
+    if (friendRef.current?.has(id)) return FRIEND_VISITED_STROKE;
     return f._isState ? STATE_STROKE : COUNTRY_STROKE;
   }, [visitedVersion]);
 
@@ -156,6 +171,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_ALT : COUNTRY_SELECTED_ALT;
       if (visitedRef.current?.has(id)) return VISITED_ALT;
+      if (friendRef.current?.has(id)) return FRIEND_VISITED_ALT;
       return f._isState ? STATE_ALT : COUNTRY_ALT;
     },
     [selectedId, visitedVersion],
@@ -197,6 +213,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       const city = pt as CityPoint;
       if (city.id === selectedId) return CITY_SELECTED_COLOR;
       if (visitedRef.current?.has(city.id)) return CITY_VISITED_COLOR;
+      if (friendRef.current?.has(city.id)) return CITY_FRIEND_VISITED_COLOR;
       return CITY_COLOR;
     },
     [selectedId, visitedVersion],

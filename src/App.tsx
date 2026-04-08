@@ -7,11 +7,14 @@ import { CountryPanel } from './components/CountryPanel';
 import PhotoGallery from './components/CountryPanel/PhotoGallery';
 import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
+import { FriendsPanel, FriendOverlay } from './components/Friends';
 import { AuthOverlay, UserIndicator } from './components/Auth';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
 import { useTravelPhotos } from './hooks/useTravelPhotos';
+import { useFriends } from './hooks/useFriends';
+import { useFriendData } from './hooks/useFriendData';
 import { CITIES } from './data/cities';
 import type { GeoJsonFeature, CityPoint } from './types';
 
@@ -53,6 +56,28 @@ export default function App() {
     deletePhoto,
   } = useTravelPhotos(user?.id ?? null);
 
+  const {
+    following,
+    followers,
+    loading: friendsLoading,
+    searchByEmail,
+    follow,
+    unfollow,
+    isFollowing,
+  } = useFriends(user?.id ?? null);
+
+  const {
+    friendVisitedIds,
+    activeFriendId,
+    loadingPlaces: friendLoadingPlaces,
+    friendPhotos,
+    loadingPhotos: friendPhotosLoading,
+    loadFriendPlaces,
+    clearFriend,
+    getFriendPlace,
+    loadFriendPhotos,
+  } = useFriendData();
+
   const globeRef = useRef<GlobeHandle>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -60,6 +85,7 @@ export default function App() {
   const [selectedCity, setSelectedCity] = useState<CityPoint | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showGallery, setShowGallery] = useState(false);
+  const [showFriendGallery, setShowFriendGallery] = useState(false);
 
   const rafRef = useRef(0);
   const handleZoomChange = useCallback((distance: number) => {
@@ -163,6 +189,7 @@ export default function App() {
     setSelectedFeature(null);
     setSelectedCity(null);
     setShowGallery(false);
+    setShowFriendGallery(false);
   }, []);
 
   // Derive place type and ID from whichever item is selected (polygon or city)
@@ -190,6 +217,24 @@ export default function App() {
       loadPhotos(selectedPlaceType, selectedPlaceId);
     }
   }, [hasSelection, user, selectedPlaceType, selectedPlaceId, loadPhotos]);
+
+  // Load friend's photos for the selected place when friend overlay is active
+  useEffect(() => {
+    if (hasSelection && activeFriendId) {
+      loadFriendPhotos(selectedPlaceType, selectedPlaceId);
+    }
+  }, [hasSelection, activeFriendId, selectedPlaceType, selectedPlaceId, loadFriendPhotos]);
+
+  // Derive friend info for CountryPanel
+  const activeFriendProfile = activeFriendId
+    ? following.find((f) => f.following_id === activeFriendId)?.profile
+    : null;
+  const activeFriendName = activeFriendProfile
+    ? activeFriendProfile.display_name || activeFriendProfile.email || 'Friend'
+    : null;
+  const selectedFriendVisitedData = hasSelection && activeFriendId
+    ? getFriendPlace(selectedPlaceType, selectedPlaceId)
+    : undefined;
 
   const handlePhotoUpload = useCallback(
     (file: File) => uploadPhoto(selectedPlaceType, selectedPlaceId, file),
@@ -247,6 +292,7 @@ export default function App() {
         cities={CITY_POINTS}
         selectedId={selectedId}
         visitedIds={visitedIds}
+        friendVisitedIds={friendVisitedIds}
         visitedVersion={visitedVersion}
         zoomLevel={zoomLevel}
         width={dimensions.width}
@@ -266,7 +312,25 @@ export default function App() {
 
       {!user && <AuthOverlay onSignIn={signIn} onSignUp={signUp} />}
       {user && (
-        <UserIndicator email={user.email ?? ''} onSignOut={signOut} />
+        <>
+          <UserIndicator email={user.email ?? ''} onSignOut={signOut} />
+          <FriendsPanel
+            following={following}
+            followers={followers}
+            loading={friendsLoading}
+            onSearchEmail={searchByEmail}
+            onFollow={follow}
+            onUnfollow={unfollow}
+            isFollowing={isFollowing}
+          />
+          <FriendOverlay
+            following={following}
+            activeFriendId={activeFriendId}
+            loadingPlaces={friendLoadingPlaces}
+            onSelectFriend={loadFriendPlaces}
+            onClear={clearFriend}
+          />
+        </>
       )}
 
       {hasSelection && (
@@ -281,6 +345,11 @@ export default function App() {
           onClose={handleClose}
           photoCount={photos.length}
           onOpenGallery={() => setShowGallery(true)}
+          friendName={activeFriendName}
+          friendVisitedData={selectedFriendVisitedData}
+          friendPhotos={friendPhotos}
+          friendPhotosLoading={friendPhotosLoading}
+          onOpenFriendGallery={() => setShowFriendGallery(true)}
         />
       )}
 
@@ -293,6 +362,19 @@ export default function App() {
           onUpload={handlePhotoUpload}
           onDelete={deletePhoto}
           onClose={() => setShowGallery(false)}
+        />
+      )}
+
+      {/* Friend's photo gallery — read-only (no upload/delete) */}
+      {showFriendGallery && hasSelection && activeFriendName && (
+        <PhotoGallery
+          countryName={`${activeFriendName} — ${selectedPlaceName}`}
+          photos={friendPhotos}
+          loading={friendPhotosLoading}
+          uploading={false}
+          onUpload={async () => false}
+          onDelete={async () => false}
+          onClose={() => setShowFriendGallery(false)}
         />
       )}
     </>

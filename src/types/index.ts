@@ -34,3 +34,21 @@ export interface City {
 export interface CityPoint extends City {
   id: string; // "city:Paris"
 }
+
+/** A user profile as returned from the profiles table */
+export interface UserProfile {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  is_public: boolean;
+}
+
+/** A follow relationship */
+export interface FollowRelation {
+  id: string;
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+  /** Joined profile data for the other user */
+  profile: UserProfile;
+}

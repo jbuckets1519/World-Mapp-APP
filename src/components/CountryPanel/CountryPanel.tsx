@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import type { VisitedPlace } from '../../hooks/useTravelData';
+import type { TravelPhoto } from '../../hooks/useTravelPhotos';
 
 interface CountryPanelProps {
   /** GeoJSON feature for country/state, OR null when a city is selected */
@@ -15,6 +16,12 @@ interface CountryPanelProps {
   onClose: () => void;
   photoCount: number;
   onOpenGallery: () => void;
+  /** Friend overlay data (when a friend's map is active) */
+  friendName?: string | null;
+  friendVisitedData?: VisitedPlace | undefined;
+  friendPhotos?: TravelPhoto[];
+  friendPhotosLoading?: boolean;
+  onOpenFriendGallery?: () => void;
 }
 
 export default function CountryPanel({
@@ -28,6 +35,11 @@ export default function CountryPanel({
   onClose,
   photoCount,
   onOpenGallery,
+  friendName,
+  friendVisitedData,
+  friendPhotos,
+  friendPhotosLoading,
+  onOpenFriendGallery,
 }: CountryPanelProps) {
   // Derive display name from whichever selection is active
   const displayName = city ? city.name : country?.properties.NAME ?? '';
@@ -147,6 +159,26 @@ export default function CountryPanel({
           >
             Photo Gallery{photoCount > 0 ? ` (${photoCount})` : ''}
           </button>
+
+          {/* Friend's data section — shown when a friend overlay is active and they visited this place */}
+          {friendName && friendVisitedData && (
+            <div style={styles.friendSection}>
+              <div style={styles.friendHeader}>
+                <span style={styles.friendDot} />
+                {friendName}'s visit
+              </div>
+              {friendVisitedData.notes && (
+                <p style={styles.friendNotes}>{friendVisitedData.notes}</p>
+              )}
+              {onOpenFriendGallery && (
+                <button style={styles.friendGalleryBtn} onClick={onOpenFriendGallery}>
+                  {friendPhotosLoading
+                    ? 'Loading photos...'
+                    : `${friendName}'s Photos${friendPhotos && friendPhotos.length > 0 ? ` (${friendPhotos.length})` : ''}`}
+                </button>
+              )}
+            </div>
+          )}
         </>
       ) : (
         <p style={styles.loginHint}>Log in to save visited places and notes</p>
@@ -268,5 +300,46 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.8rem',
     textAlign: 'center',
     margin: 0,
+  },
+  friendSection: {
+    marginTop: '0.75rem',
+    padding: '0.75rem',
+    background: 'rgba(180, 130, 255, 0.06)',
+    border: '1px solid rgba(180, 130, 255, 0.2)',
+    borderRadius: '8px',
+  },
+  friendHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    color: 'rgba(180, 130, 255, 0.9)',
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    marginBottom: '0.4rem',
+  },
+  friendDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: 'rgba(180, 130, 255, 0.7)',
+    flexShrink: 0,
+  },
+  friendNotes: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: '0.8rem',
+    margin: '0 0 0.5rem 0',
+    lineHeight: 1.4,
+    whiteSpace: 'pre-wrap' as const,
+  },
+  friendGalleryBtn: {
+    width: '100%',
+    padding: '0.45rem',
+    background: 'rgba(180, 130, 255, 0.1)',
+    border: '1px solid rgba(180, 130, 255, 0.25)',
+    borderRadius: '6px',
+    color: 'rgba(180, 130, 255, 0.8)',
+    fontSize: '0.78rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
 };

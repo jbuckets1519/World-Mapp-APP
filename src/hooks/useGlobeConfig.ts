@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import type { GeoJsonFeature, GeoJsonData, CityPoint } from '../types';
 
-// 110m countries — lightweight geometry, good enough for globe view
+// 110m countries — lightweight geometry for major countries
 const COUNTRIES_URL =
   'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson';
+
+// 50m countries — only used to extract small islands missing from 110m
+const COUNTRIES_50M_URL =
+  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
 
 // 110m lakes — ~25 most significant lakes (Great Lakes, Caspian Sea, etc.)
 const LAKES_URL =
@@ -118,17 +122,35 @@ export function useGlobeConfig() {
   useEffect(() => {
     let cancelled = false;
 
-    // --- Countries (required) ---
-    fetch(COUNTRIES_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Failed to fetch countries: ${res.status}`);
+    // --- Countries (required): 110m base + 50m islands ---
+    // Load both datasets, merge missing islands from 50m into 110m
+    Promise.all([
+      fetch(COUNTRIES_URL).then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch 110m countries: ${res.status}`);
         return res.json() as Promise<GeoJsonData>;
-      })
-      .then((data) => {
-        if (!cancelled) {
-          setCountries(data.features);
-          setLoading(false);
+      }),
+      fetch(COUNTRIES_50M_URL).then((res) => {
+        if (!res.ok) return null;
+        return res.json() as Promise<GeoJsonData>;
+      }).catch(() => null),
+    ])
+      .then(([data110m, data50m]) => {
+        if (cancelled) return;
+        const base = data110m.features;
+
+        if (data50m) {
+          // Find country names in 110m so we can identify what's missing
+          const names110m = new Set(base.map((f) => f.properties.NAME as string));
+          // Add any 50m countries not present in 110m (small islands)
+          const islands = data50m.features.filter(
+            (f) => !names110m.has(f.properties.NAME as string),
+          );
+          console.log(`[GlobeConfig] added ${islands.length} island nations from 50m`);
+          setCountries([...base, ...islands]);
+        } else {
+          setCountries(base);
         }
+        setLoading(false);
       })
       .catch((err) => {
         if (!cancelled) {

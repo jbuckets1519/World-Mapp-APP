@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { supabase } from '../../lib/supabase';
+
+type AuthMode = 'login' | 'signup' | 'forgot';
 
 interface AuthOverlayProps {
   onSignIn: (email: string, password: string) => Promise<void>;
@@ -6,25 +9,47 @@ interface AuthOverlayProps {
 }
 
 export default function AuthOverlay({ onSignIn, onSignUp }: AuthOverlayProps) {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  // Show a confirmation message after signup
+  // Show a confirmation message after signup or password reset
   const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setError(null);
+    setResetSent(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      if (isSignUp) {
+      if (mode === 'signup') {
         await onSignUp(email, password);
         setSignUpSuccess(true);
       } else {
         await onSignIn(email, password);
       }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+      if (resetError) throw resetError;
+      setResetSent(true);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -45,7 +70,7 @@ export default function AuthOverlay({ onSignIn, onSignUp }: AuthOverlayProps) {
             style={styles.button}
             onClick={() => {
               setSignUpSuccess(false);
-              setIsSignUp(false);
+              switchMode('login');
               setPassword('');
             }}
           >
@@ -56,10 +81,60 @@ export default function AuthOverlay({ onSignIn, onSignUp }: AuthOverlayProps) {
     );
   }
 
+  // Forgot password screen
+  if (mode === 'forgot') {
+    return (
+      <div style={styles.backdrop}>
+        <div style={styles.card}>
+          <h2 style={styles.title}>Reset password</h2>
+          {resetSent ? (
+            <>
+              <p style={styles.subtitle}>
+                Check your email for a reset link. We sent it to <strong>{email}</strong>.
+              </p>
+              <button
+                style={styles.button}
+                onClick={() => {
+                  switchMode('login');
+                  setPassword('');
+                }}
+              >
+                Back to login
+              </button>
+            </>
+          ) : (
+            <>
+              <p style={styles.subtitle}>
+                Enter your email and we'll send you a link to reset your password.
+              </p>
+              <form onSubmit={handleResetPassword} style={styles.form}>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={styles.input}
+                />
+                {error && <p style={styles.error}>{error}</p>}
+                <button type="submit" disabled={submitting} style={styles.button}>
+                  {submitting ? '...' : 'Send reset link'}
+                </button>
+              </form>
+              <button style={styles.toggle} onClick={() => switchMode('login')}>
+                Back to login
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.backdrop}>
       <div style={styles.card}>
-        <h2 style={styles.title}>{isSignUp ? 'Create account' : 'Welcome back'}</h2>
+        <h2 style={styles.title}>{mode === 'signup' ? 'Create account' : 'Welcome back'}</h2>
         <form onSubmit={handleSubmit} style={styles.form}>
           <input
             type="email"
@@ -78,23 +153,30 @@ export default function AuthOverlay({ onSignIn, onSignUp }: AuthOverlayProps) {
             minLength={6}
             style={styles.input}
           />
+          {/* Forgot password link — only on the login form */}
+          {mode === 'login' && (
+            <button
+              type="button"
+              style={styles.forgotLink}
+              onClick={() => switchMode('forgot')}
+            >
+              Forgot password?
+            </button>
+          )}
           {error && <p style={styles.error}>{error}</p>}
           <button type="submit" disabled={submitting} style={styles.button}>
             {submitting
               ? '...'
-              : isSignUp
+              : mode === 'signup'
                 ? 'Sign up'
                 : 'Log in'}
           </button>
         </form>
         <button
           style={styles.toggle}
-          onClick={() => {
-            setIsSignUp(!isSignUp);
-            setError(null);
-          }}
+          onClick={() => switchMode(mode === 'signup' ? 'login' : 'signup')}
         >
-          {isSignUp
+          {mode === 'signup'
             ? 'Already have an account? Log in'
             : "Don't have an account? Sign up"}
         </button>
@@ -177,6 +259,17 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     textAlign: 'center',
     fontFamily: 'inherit',
+  },
+  forgotLink: {
+    background: 'none',
+    border: 'none',
+    color: 'rgba(100, 180, 255, 0.6)',
+    fontSize: '0.78rem',
+    cursor: 'pointer',
+    textAlign: 'right' as const,
+    fontFamily: 'inherit',
+    padding: 0,
+    marginTop: '-0.35rem',
   },
   error: {
     color: '#ff6b6b',

@@ -35,34 +35,34 @@ interface GlobeProps {
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
 
-// --- Country colors ---
-const COUNTRY_CAP = 'rgba(100, 180, 255, 0.15)';
-const COUNTRY_SIDE = 'rgba(100, 180, 255, 0.05)';
+// --- Country colors — slightly lighter fill so landmasses pop against the ocean ---
+const COUNTRY_CAP = 'rgba(100, 180, 255, 0.22)';
+const COUNTRY_SIDE = 'rgba(100, 180, 255, 0.07)';
 const COUNTRY_STROKE = 'rgb(100, 180, 255)';
 const COUNTRY_SELECTED_CAP = 'rgba(100, 180, 255, 0.6)';
 const COUNTRY_SELECTED_SIDE = 'rgba(100, 180, 255, 0.35)';
 
 // --- State colors — cap matches countries so USA looks the same ---
-const STATE_CAP = 'rgba(100, 180, 255, 0.15)';
-const STATE_SIDE = 'rgba(100, 180, 255, 0.05)';
+const STATE_CAP = 'rgba(100, 180, 255, 0.22)';
+const STATE_SIDE = 'rgba(100, 180, 255, 0.07)';
 const STATE_STROKE = 'rgb(255, 230, 130)';
 const STATE_SELECTED_CAP = 'rgba(255, 230, 130, 0.25)';
 const STATE_SELECTED_SIDE = 'rgba(255, 230, 130, 0.1)';
 
-// --- Visited colors (warm orange) ---
-const VISITED_CAP = 'rgba(255, 160, 50, 0.35)';
-const VISITED_SIDE = 'rgba(255, 160, 50, 0.15)';
-const VISITED_STROKE = 'rgba(255, 160, 50, 0.5)';
+// --- Visited colors (warm gold) ---
+const VISITED_CAP = 'rgba(255, 195, 50, 0.35)';
+const VISITED_SIDE = 'rgba(255, 195, 50, 0.15)';
+const VISITED_STROKE = 'rgba(255, 195, 50, 0.5)';
 
 // --- Purple visited colors (used when viewing a friend's map) ---
 const PURPLE_VISITED_CAP = 'rgba(180, 130, 255, 0.35)';
 const PURPLE_VISITED_SIDE = 'rgba(180, 130, 255, 0.15)';
 const PURPLE_VISITED_STROKE = 'rgba(180, 130, 255, 0.5)';
 
-// --- Bucketlist colors (light red) ---
-const BUCKET_CAP = 'rgba(255, 100, 100, 0.2)';
-const BUCKET_SIDE = 'rgba(255, 100, 100, 0.08)';
-const BUCKET_STROKE = 'rgba(255, 100, 100, 0.35)';
+// --- Bucketlist colors (soft coral) ---
+const BUCKET_CAP = 'rgba(255, 130, 110, 0.2)';
+const BUCKET_SIDE = 'rgba(255, 130, 110, 0.08)';
+const BUCKET_STROKE = 'rgba(255, 130, 110, 0.35)';
 const BUCKET_ALT = 0.007;
 // --- City dot colors ---
 // Default: soft white to stay neutral against the blue globe
@@ -302,9 +302,10 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       ref={globeRef}
       width={width}
       height={height}
+      globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
       backgroundColor="rgba(0,0,0,0)"
       showAtmosphere={true}
-      atmosphereColor="rgba(100, 180, 255, 0.3)"
+      atmosphereColor="rgba(140, 140, 255, 0.3)"
       atmosphereAltitude={0.25}
       polygonsData={polygons}
       polygonCapColor={getCapColor}

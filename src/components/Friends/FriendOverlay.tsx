@@ -103,7 +103,7 @@ export default function FriendOverlay({
                   style={{
                     ...styles.toggleSwitch,
                     background: showFriendBucketlist
-                      ? 'rgba(255, 100, 100, 0.4)'
+                      ? 'rgba(255, 130, 110, 0.4)'
                       : 'rgba(255, 255, 255, 0.1)',
                   }}
                   onClick={onToggleFriendBucketlist}

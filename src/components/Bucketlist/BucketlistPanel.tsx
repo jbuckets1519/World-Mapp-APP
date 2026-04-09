@@ -11,7 +11,7 @@ interface BucketlistPanelProps {
 }
 
 /** Pail/bucket SVG icon — used consistently across the app */
-export function PailIcon({ size = 16, filled = false, color = 'rgba(255, 100, 100, 0.8)' }: {
+export function PailIcon({ size = 16, filled = false, color = 'rgba(255, 130, 110, 0.8)' }: {
   size?: number; filled?: boolean; color?: string;
 }) {
   return (
@@ -116,7 +116,7 @@ export default function BucketlistPanel({
   );
 }
 
-const ACCENT = 'rgba(255, 100, 100,';
+const ACCENT = 'rgba(255, 130, 110,';
 
 const styles: Record<string, React.CSSProperties> = {
   iconBtn: {

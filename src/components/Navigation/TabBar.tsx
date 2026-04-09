@@ -7,7 +7,7 @@ interface TabBarProps {
 
 /** Reusable helper — returns the active or inactive colour for a tab */
 function tabColor(active: boolean): string {
-  return active ? 'rgba(100, 180, 255, 0.95)' : 'rgba(255, 255, 255, 0.4)';
+  return active ? 'rgba(100, 180, 255, 0.95)' : 'rgba(255, 255, 255, 0.6)';
 }
 
 export default function TabBar({ activeTab, onTabChange }: TabBarProps) {

@@ -196,7 +196,7 @@ export default function CountryPanel({
               title={isInBucketlist ? 'Remove from bucketlist' : 'Add to bucketlist'}
             >
               <PailIcon size={21} filled={isInBucketlist}
-                color={isInBucketlist ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 100, 100, 0.55)'} />
+                color={isInBucketlist ? 'rgba(255, 130, 110, 0.9)' : 'rgba(255, 130, 110, 0.55)'} />
             </button>
           )}
         </div>
@@ -317,12 +317,14 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 'calc(100vw - 2rem)',
     maxHeight: 'calc(100vh - 56px - 2rem - env(safe-area-inset-bottom, 0px))',
     overflowY: 'auto' as const,
-    background: 'rgba(15, 15, 25, 0.92)',
-    backdropFilter: 'blur(12px)',
+    background: 'rgba(15, 15, 25, 0.88)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
     border: '1px solid rgba(100, 180, 255, 0.2)',
-    borderRadius: '12px',
+    borderRadius: '18px',
     padding: '1.25rem',
     zIndex: 1000,
+    animation: 'panelSlideIn 0.25s ease-out',
   },
   header: {
     display: 'flex',
@@ -344,9 +346,9 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: 'inherit', marginBottom: '0.75rem',
   },
   visitedBtnActive: {
-    background: 'rgba(255, 160, 50, 0.15)',
-    borderColor: 'rgba(255, 160, 50, 0.4)',
-    color: 'rgba(255, 160, 50, 0.9)',
+    background: 'rgba(255, 195, 50, 0.15)',
+    borderColor: 'rgba(255, 195, 50, 0.4)',
+    color: 'rgba(255, 195, 50, 0.9)',
   },
   textarea: {
     width: '100%', minHeight: '100px', background: 'rgba(255, 255, 255, 0.05)',
@@ -382,13 +384,13 @@ const styles: Record<string, React.CSSProperties> = {
     width: '34px', height: '34px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'rgba(15, 15, 25, 0.7)',
-    border: '1px solid rgba(255, 100, 100, 0.25)',
+    border: '1px solid rgba(255, 130, 110, 0.25)',
     borderRadius: '8px',
     cursor: 'pointer', flexShrink: 0, padding: 0,
   },
   pailBtnActive: {
-    background: 'rgba(255, 100, 100, 0.1)',
-    borderColor: 'rgba(255, 100, 100, 0.4)',
+    background: 'rgba(255, 130, 110, 0.1)',
+    borderColor: 'rgba(255, 130, 110, 0.4)',
   },
   loginHint: { color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.8rem', textAlign: 'center', margin: 0 },
   // --- Date section ---

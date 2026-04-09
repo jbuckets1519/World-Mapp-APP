@@ -264,7 +264,7 @@ export default function SearchBar({
                     title={inBucket ? 'Remove from bucketlist' : 'Add to bucketlist'}
                   >
                     <PailIcon size={14} filled={inBucket}
-                      color={inBucket ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 100, 100, 0.35)'} />
+                      color={inBucket ? 'rgba(255, 130, 110, 0.9)' : 'rgba(255, 130, 110, 0.35)'} />
                   </button>
                 )}
               </div>

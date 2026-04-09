@@ -32,7 +32,7 @@ const MAX_ZOOM_DISTANCE = 500;
 // --- Country colors ---
 const COUNTRY_CAP = 'rgba(100, 180, 255, 0.15)';
 const COUNTRY_SIDE = 'rgba(100, 180, 255, 0.05)';
-const COUNTRY_STROKE = 'rgba(100, 180, 255, 0.4)';
+const COUNTRY_STROKE = 'rgb(100, 180, 255)';
 const COUNTRY_SELECTED_CAP = 'rgba(100, 180, 255, 0.6)';
 const COUNTRY_SELECTED_SIDE = 'rgba(100, 180, 255, 0.35)';
 

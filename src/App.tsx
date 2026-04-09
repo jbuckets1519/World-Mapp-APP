@@ -7,10 +7,13 @@ import { CountryPanel } from './components/CountryPanel';
 import PhotoGallery from './components/CountryPanel/PhotoGallery';
 import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
-import { FriendsPanel, FriendOverlay } from './components/Friends';
+import { FriendOverlay } from './components/Friends';
 import { BucketlistPanel } from './components/Bucketlist';
-import { AuthOverlay, UserIndicator, ProfileEditor, ProfileView, ProfileSetup } from './components/Auth';
+import { AuthOverlay, UserIndicator, ProfileView, ProfileSetup } from './components/Auth';
 import PerfMonitor from './components/PerfMonitor';
+import { TabBar, TAB_BAR_HEIGHT } from './components/Navigation';
+import type { TabId } from './components/Navigation';
+import { ProfileTab } from './components/ProfileTab';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
@@ -142,9 +145,8 @@ export default function App() {
   const [selectedCity, setSelectedCity] = useState<CityPoint | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showGallery, setShowGallery] = useState(false);
-  const [friendsPanelOpen, setFriendsPanelOpen] = useState(false);
-  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>('globe');
 
   // Are we viewing a friend's map? This drives the entire UI mode.
   const isFriendView = Boolean(activeFriendId);
@@ -406,56 +408,162 @@ export default function App() {
 
   return (
     <>
-      <Globe
-        ref={globeRef}
-        polygons={polygons}
-        cities={visibleCities}
-        selectedId={selectedId}
-        visitedIds={globeVisitedIds}
-        visitedVersion={globeVisitedVersion}
-        visitedColor={isFriendView ? 'purple' : 'orange'}
-        zoomLevel={zoomLevel}
-        width={dimensions.width}
-        height={dimensions.height}
-        onPolygonClick={handlePolygonClick}
-        onCityClick={handleCityClick}
-        onZoomChange={handleZoomChange}
-        onGlobeClick={handleClose}
-        bucketlistIds={
-          isFriendView
-            ? (showFriendBucketlist ? friendBucketlistIds : undefined)
-            : (showBucketlistOverlay ? bucketlistIds : undefined)
-        }
-        bucketlistVersion={
-          isFriendView
-            ? (showFriendBucketlist ? friendVersion : 0)
-            : (showBucketlistOverlay ? bucketlistVersion : 0)
-        }
-      />
-      <SearchBar
-        cities={allCities}
-        polygons={polygons}
-        onSelectCity={handleSearchSelectCity}
-        onSelectPolygon={handleSearchSelectPolygon}
-        onFlyTo={handleFlyTo}
-        isInBucketlist={user ? isInBucketlist : undefined}
-        onAddToBucketlist={user ? (t, id, n) => { addBucketlistItem(t, id, n); } : undefined}
-        onRemoveFromBucketlist={user ? (id) => { removeBucketlistItem(id); } : undefined}
-      />
-      <ZoomIndicator level={zoomLevel} />
-      <PerfMonitor polygonCount={polygons.length} cityCount={visibleCities.length} />
+      {/* Globe is always mounted so it keeps state, but hidden when on profile tab */}
+      <div style={{ display: activeTab === 'globe' ? 'contents' : 'none' }}>
+        <Globe
+          ref={globeRef}
+          polygons={polygons}
+          cities={visibleCities}
+          selectedId={selectedId}
+          visitedIds={globeVisitedIds}
+          visitedVersion={globeVisitedVersion}
+          visitedColor={isFriendView ? 'purple' : 'orange'}
+          zoomLevel={zoomLevel}
+          width={dimensions.width}
+          height={dimensions.height}
+          onPolygonClick={handlePolygonClick}
+          onCityClick={handleCityClick}
+          onZoomChange={handleZoomChange}
+          onGlobeClick={handleClose}
+          bucketlistIds={
+            isFriendView
+              ? (showFriendBucketlist ? friendBucketlistIds : undefined)
+              : (showBucketlistOverlay ? bucketlistIds : undefined)
+          }
+          bucketlistVersion={
+            isFriendView
+              ? (showFriendBucketlist ? friendVersion : 0)
+              : (showBucketlistOverlay ? bucketlistVersion : 0)
+          }
+        />
+        <SearchBar
+          cities={allCities}
+          polygons={polygons}
+          onSelectCity={handleSearchSelectCity}
+          onSelectPolygon={handleSearchSelectPolygon}
+          onFlyTo={handleFlyTo}
+          isInBucketlist={user ? isInBucketlist : undefined}
+          onAddToBucketlist={user ? (t, id, n) => { addBucketlistItem(t, id, n); } : undefined}
+          onRemoveFromBucketlist={user ? (id) => { removeBucketlistItem(id); } : undefined}
+        />
+        <ZoomIndicator level={zoomLevel} />
+        <PerfMonitor polygonCount={polygons.length} cityCount={visibleCities.length} />
 
-      {/* "Back to My Map" banner when viewing a friend's map */}
-      {isFriendView && activeFriendName && (
-        <div style={friendBannerStyles.banner}>
-          <span style={friendBannerStyles.dot} />
-          <span>Viewing <strong>{activeFriendName}</strong>'s map</span>
-          <button style={friendBannerStyles.backBtn} onClick={clearFriend}>
-            Back to My Map
-          </button>
-        </div>
+        {/* "Back to My Map" banner when viewing a friend's map */}
+        {isFriendView && activeFriendName && (
+          <div style={friendBannerStyles.banner}>
+            <span style={friendBannerStyles.dot} />
+            <span>Viewing <strong>{activeFriendName}</strong>'s map</span>
+            <button style={friendBannerStyles.backBtn} onClick={clearFriend}>
+              Back to My Map
+            </button>
+          </div>
+        )}
+
+        {user && (
+          <>
+            <UserIndicator
+              email={user.email ?? ''}
+              profile={profile}
+              onSignOut={signOut}
+              onEditProfile={() => setActiveTab('profile')}
+            />
+            <BucketlistPanel
+              items={bucketlistItems}
+              loading={bucketlistLoading}
+              showOverlay={showBucketlistOverlay}
+              onToggleOverlay={() => setShowBucketlistOverlay((v) => !v)}
+              onRemove={removeBucketlistItem}
+            />
+            {/* Friend overlay selector — "View friend's map" stays on globe tab */}
+            {!showGallery && (
+              <FriendOverlay
+                following={following}
+                activeFriendId={activeFriendId}
+                loadingPlaces={friendLoadingPlaces}
+                onSelectFriend={loadFriendPlaces}
+                onClear={clearFriend}
+                friendName={activeFriendName}
+                showFriendBucketlist={showFriendBucketlist}
+                onToggleFriendBucketlist={() => setShowFriendBucketlist((v) => !v)}
+              />
+            )}
+          </>
+        )}
+
+        {hasSelection && (
+          isFriendView ? (
+            <CountryPanel
+              country={selectedFeature}
+              city={selectedCity}
+              visitedData={selectedVisitedData}
+              isLoggedIn={Boolean(user)}
+              onMarkVisited={async () => false}
+              onRemoveVisited={() => {}}
+              onNotesChange={async () => false}
+              onUpdateDates={async () => false}
+              onClose={handleClose}
+              photoCount={panelPhotos.length}
+              onOpenGallery={() => setShowGallery(true)}
+              friendViewMode={true}
+              friendName={activeFriendName}
+            />
+          ) : (
+            <CountryPanel
+              country={selectedFeature}
+              city={selectedCity}
+              visitedData={selectedVisitedData}
+              isLoggedIn={Boolean(user)}
+              onMarkVisited={handleMarkVisited}
+              onRemoveVisited={handleRemoveVisited}
+              onNotesChange={handleNotesChange}
+              onUpdateDates={handleUpdateDates}
+              onClose={handleClose}
+              photoCount={panelPhotos.length}
+              onOpenGallery={() => setShowGallery(true)}
+              isInBucketlist={isInBucketlist(selectedPlaceId)}
+              onAddToBucketlist={() => addBucketlistItem(selectedPlaceType, selectedPlaceId, selectedPlaceName)}
+              onRemoveFromBucketlist={() => removeBucketlistItem(selectedPlaceId)}
+            />
+          )
+        )}
+
+        {showGallery && hasSelection && (
+          <PhotoGallery
+            countryName={isFriendView ? `${activeFriendName} — ${selectedPlaceName}` : selectedPlaceName}
+            photos={panelPhotos}
+            loading={panelPhotosLoading}
+            uploading={isFriendView ? false : photosUploading}
+            onUpload={isFriendView ? async () => false : handlePhotoUpload}
+            onDelete={isFriendView ? async () => false : deletePhoto}
+            onClose={() => setShowGallery(false)}
+            readOnly={isFriendView}
+          />
+        )}
+      </div>
+
+      {/* Profile tab */}
+      {activeTab === 'profile' && user && profile && (
+        <ProfileTab
+          profile={profile}
+          saving={profileSaving}
+          places={places}
+          totalPhotoCount={totalPhotoCount}
+          onSave={updateProfile}
+          onUploadAvatar={uploadAvatar}
+          onSignOut={signOut}
+          following={following}
+          followers={followers}
+          friendsLoading={friendsLoading}
+          onSearchUsers={searchUsers}
+          onFollow={follow}
+          onUnfollow={unfollow}
+          isFollowing={isFollowing}
+          onViewProfile={setViewingProfileId}
+        />
       )}
 
+      {/* Auth overlay — always visible regardless of tab */}
       {!user && <AuthOverlay onSignIn={signIn} onSignUp={signUp} />}
 
       {/* First-time profile setup — blocks the app until username is set */}
@@ -468,112 +576,8 @@ export default function App() {
           onComplete={reloadProfile}
         />
       )}
-      {user && (
-        <>
-          <UserIndicator
-            email={user.email ?? ''}
-            profile={profile}
-            onSignOut={signOut}
-            onEditProfile={() => setShowProfileEditor(true)}
-          />
-          <BucketlistPanel
-            items={bucketlistItems}
-            loading={bucketlistLoading}
-            showOverlay={showBucketlistOverlay}
-            onToggleOverlay={() => setShowBucketlistOverlay((v) => !v)}
-            onRemove={removeBucketlistItem}
-          />
-          <FriendsPanel
-            following={following}
-            followers={followers}
-            loading={friendsLoading}
-            onSearchUsers={searchUsers}
-            onFollow={follow}
-            onUnfollow={unfollow}
-            isFollowing={isFollowing}
-            onOpenChange={setFriendsPanelOpen}
-            onViewProfile={setViewingProfileId}
-          />
-          {/* Friend overlay selector — hidden when panels are open */}
-          {!friendsPanelOpen && !showGallery && (
-            <FriendOverlay
-              following={following}
-              activeFriendId={activeFriendId}
-              loadingPlaces={friendLoadingPlaces}
-              onSelectFriend={loadFriendPlaces}
-              onClear={clearFriend}
-              friendName={activeFriendName}
-              showFriendBucketlist={showFriendBucketlist}
-              onToggleFriendBucketlist={() => setShowFriendBucketlist((v) => !v)}
-            />
-          )}
-        </>
-      )}
 
-      {hasSelection && (
-        isFriendView ? (
-          // Friend view: read-only panel with friend's data
-          <CountryPanel
-            country={selectedFeature}
-            city={selectedCity}
-            visitedData={selectedVisitedData}
-            isLoggedIn={Boolean(user)}
-            onMarkVisited={async () => false}
-            onRemoveVisited={() => {}}
-            onNotesChange={async () => false}
-            onUpdateDates={async () => false}
-            onClose={handleClose}
-            photoCount={panelPhotos.length}
-            onOpenGallery={() => setShowGallery(true)}
-            friendViewMode={true}
-            friendName={activeFriendName}
-          />
-        ) : (
-          // Own map: editable panel
-          <CountryPanel
-            country={selectedFeature}
-            city={selectedCity}
-            visitedData={selectedVisitedData}
-            isLoggedIn={Boolean(user)}
-            onMarkVisited={handleMarkVisited}
-            onRemoveVisited={handleRemoveVisited}
-            onNotesChange={handleNotesChange}
-            onUpdateDates={handleUpdateDates}
-            onClose={handleClose}
-            photoCount={panelPhotos.length}
-            onOpenGallery={() => setShowGallery(true)}
-            isInBucketlist={isInBucketlist(selectedPlaceId)}
-            onAddToBucketlist={() => addBucketlistItem(selectedPlaceType, selectedPlaceId, selectedPlaceName)}
-            onRemoveFromBucketlist={() => removeBucketlistItem(selectedPlaceId)}
-          />
-        )
-      )}
-
-      {showGallery && hasSelection && (
-        <PhotoGallery
-          countryName={isFriendView ? `${activeFriendName} — ${selectedPlaceName}` : selectedPlaceName}
-          photos={panelPhotos}
-          loading={panelPhotosLoading}
-          uploading={isFriendView ? false : photosUploading}
-          onUpload={isFriendView ? async () => false : handlePhotoUpload}
-          onDelete={isFriendView ? async () => false : deletePhoto}
-          onClose={() => setShowGallery(false)}
-          readOnly={isFriendView}
-        />
-      )}
-
-      {showProfileEditor && profile && (
-        <ProfileEditor
-          profile={profile}
-          saving={profileSaving}
-          places={places}
-          totalPhotoCount={totalPhotoCount}
-          onSave={updateProfile}
-          onUploadAvatar={uploadAvatar}
-          onClose={() => setShowProfileEditor(false)}
-        />
-      )}
-
+      {/* ProfileView modal — can appear from both tabs */}
       {viewingProfileId && (
         <ProfileView
           userId={viewingProfileId}
@@ -583,6 +587,11 @@ export default function App() {
           onClose={() => setViewingProfileId(null)}
         />
       )}
+
+      {/* Bottom tab bar — only show when logged in */}
+      {user && (
+        <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      )}
     </>
   );
 }
@@ -591,7 +600,7 @@ export default function App() {
 const friendBannerStyles: Record<string, React.CSSProperties> = {
   banner: {
     position: 'fixed',
-    bottom: '1rem',
+    bottom: `${TAB_BAR_HEIGHT + 12}px`,
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',

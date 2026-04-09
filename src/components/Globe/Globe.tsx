@@ -26,6 +26,10 @@ interface GlobeProps {
   onZoomChange?: (distance: number) => void;
   /** Fires when clicking empty globe space (ocean, etc.) — not a polygon or city */
   onGlobeClick?: () => void;
+  /** Set of polygon IDs to highlight as bucketlist (yellow) */
+  bucketlistIds?: Set<string>;
+  /** Increment to force re-evaluation of bucketlist colors */
+  bucketlistVersion?: number;
 }
 
 const MIN_ZOOM_DISTANCE = 120;
@@ -54,6 +58,12 @@ const VISITED_STROKE = 'rgba(255, 160, 50, 0.5)';
 const PURPLE_VISITED_CAP = 'rgba(180, 130, 255, 0.35)';
 const PURPLE_VISITED_SIDE = 'rgba(180, 130, 255, 0.15)';
 const PURPLE_VISITED_STROKE = 'rgba(180, 130, 255, 0.5)';
+
+// --- Bucketlist colors (light yellow) ---
+const BUCKET_CAP = 'rgba(255, 220, 100, 0.2)';
+const BUCKET_SIDE = 'rgba(255, 220, 100, 0.08)';
+const BUCKET_STROKE = 'rgba(255, 220, 100, 0.35)';
+const BUCKET_ALT = 0.007;
 // --- City dot colors ---
 // Default: soft white to stay neutral against the blue globe
 const CITY_COLOR = 'rgba(220, 220, 230, 0.6)';
@@ -95,6 +105,8 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   onCityClick,
   onZoomChange,
   onGlobeClick,
+  bucketlistIds,
+  bucketlistVersion = 0,
 }, ref) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
 
@@ -108,6 +120,8 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   // without needing it as a dependency (avoids accessor recreation)
   const visitedRef = useRef(visitedIds);
   visitedRef.current = visitedIds;
+  const bucketRef = useRef(bucketlistIds);
+  bucketRef.current = bucketlistIds;
 
   useEffect(() => {
     const globe = globeRef.current;
@@ -146,9 +160,10 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_CAP : COUNTRY_SELECTED_CAP;
       if (visitedRef.current?.has(id)) return isPurple ? PURPLE_VISITED_CAP : VISITED_CAP;
+      if (bucketRef.current?.has(id)) return BUCKET_CAP;
       return f._isState ? STATE_CAP : COUNTRY_CAP;
     },
-    [selectedId, visitedVersion, isPurple],
+    [selectedId, visitedVersion, isPurple, bucketlistVersion],
   );
 
   const getSideColor = useCallback(
@@ -158,9 +173,10 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_SIDE : COUNTRY_SELECTED_SIDE;
       if (visitedRef.current?.has(id)) return isPurple ? PURPLE_VISITED_SIDE : VISITED_SIDE;
+      if (bucketRef.current?.has(id)) return BUCKET_SIDE;
       return f._isState ? STATE_SIDE : COUNTRY_SIDE;
     },
-    [selectedId, visitedVersion, isPurple],
+    [selectedId, visitedVersion, isPurple, bucketlistVersion],
   );
 
   const getStrokeColor = useCallback((feat: object) => {
@@ -168,8 +184,9 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     if (f._isLake) return 'rgba(0, 0, 0, 0)';
     const id = getPolygonId(f);
     if (visitedRef.current?.has(id)) return isPurple ? PURPLE_VISITED_STROKE : VISITED_STROKE;
+    if (bucketRef.current?.has(id)) return BUCKET_STROKE;
     return f._isState ? STATE_STROKE : COUNTRY_STROKE;
-  }, [visitedVersion, isPurple]);
+  }, [visitedVersion, isPurple, bucketlistVersion]);
 
   const getAltitude = useCallback(
     (feat: object) => {
@@ -178,9 +195,10 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_ALT : COUNTRY_SELECTED_ALT;
       if (visitedRef.current?.has(id)) return VISITED_ALT;
+      if (bucketRef.current?.has(id)) return BUCKET_ALT;
       return f._isState ? STATE_ALT : COUNTRY_ALT;
     },
-    [selectedId, visitedVersion],
+    [selectedId, visitedVersion, bucketlistVersion],
   );
 
   // Lakes get no label or click handling

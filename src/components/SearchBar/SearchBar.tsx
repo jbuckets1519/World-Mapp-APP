@@ -21,6 +21,10 @@ interface SearchBarProps {
   onSelectCity: (city: CityPoint) => void;
   onSelectPolygon: (polygon: GeoJsonFeature) => void;
   onFlyTo: (lat: number, lng: number) => void;
+  /** Bucketlist integration */
+  isInBucketlist?: (placeId: string) => boolean;
+  onAddToBucketlist?: (placeType: string, placeId: string, placeName: string) => void;
+  onRemoveFromBucketlist?: (placeId: string) => void;
 }
 
 /** Rough centroid of a polygon by averaging all coordinates */
@@ -53,6 +57,9 @@ export default function SearchBar({
   polygons,
   onSelectCity,
   onSelectPolygon,
+  isInBucketlist,
+  onAddToBucketlist,
+  onRemoveFromBucketlist,
   onFlyTo,
 }: SearchBarProps) {
   const [expanded, setExpanded] = useState(false);
@@ -222,25 +229,45 @@ export default function SearchBar({
 
       {showDropdown && (
         <div style={styles.dropdown}>
-          {filtered.map((result, i) => (
-            <button
-              key={result.id}
-              style={{
-                ...styles.resultItem,
-                ...(i === highlightIndex ? styles.resultItemHighlight : {}),
-              }}
-              onMouseEnter={() => setHighlightIndex(i)}
-              onClick={() => selectResult(result)}
-            >
-              <span style={styles.resultIcon}>
-                {result.type === 'city' ? '\u2022' : result.type === 'state' ? '\u25A1' : '\u25CB'}
-              </span>
-              <div>
-                <div style={styles.resultLabel}>{result.label}</div>
-                <div style={styles.resultSubtitle}>{result.subtitle}</div>
+          {filtered.map((result, i) => {
+            const inBucket = isInBucketlist?.(result.id) ?? false;
+            return (
+              <div
+                key={result.id}
+                style={{
+                  ...styles.resultItem,
+                  ...(i === highlightIndex ? styles.resultItemHighlight : {}),
+                }}
+                onMouseEnter={() => setHighlightIndex(i)}
+              >
+                <button style={styles.resultClickArea} onClick={() => selectResult(result)}>
+                  <span style={styles.resultIcon}>
+                    {result.type === 'city' ? '\u2022' : result.type === 'state' ? '\u25A1' : '\u25CB'}
+                  </span>
+                  <div>
+                    <div style={styles.resultLabel}>{result.label}</div>
+                    <div style={styles.resultSubtitle}>{result.subtitle}</div>
+                  </div>
+                </button>
+                {onAddToBucketlist && (
+                  <button
+                    style={{
+                      ...styles.bucketBtn,
+                      ...(inBucket ? styles.bucketBtnActive : {}),
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (inBucket) onRemoveFromBucketlist?.(result.id);
+                      else onAddToBucketlist(result.type, result.id, result.label);
+                    }}
+                    title={inBucket ? 'Remove from bucketlist' : 'Add to bucketlist'}
+                  >
+                    {inBucket ? '★' : '☆'}
+                  </button>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -315,9 +342,19 @@ const styles: Record<string, React.CSSProperties> = {
   resultItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.6rem',
     width: '100%',
-    padding: '0.55rem 0.85rem',
+    padding: '0 0.85rem 0 0',
+    background: 'none',
+    border: 'none',
+    color: '#fff',
+    fontSize: '0.85rem',
+  },
+  resultClickArea: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.6rem',
+    flex: 1,
+    padding: '0.55rem 0.5rem 0.55rem 0.85rem',
     background: 'none',
     border: 'none',
     color: '#fff',
@@ -325,9 +362,23 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: 'inherit',
     cursor: 'pointer',
     textAlign: 'left' as const,
+    minWidth: 0,
   },
   resultItemHighlight: {
     background: 'rgba(100, 180, 255, 0.12)',
+  },
+  bucketBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'rgba(255, 220, 100, 0.35)',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    padding: '0.2rem',
+    flexShrink: 0,
+    lineHeight: 1,
+  },
+  bucketBtnActive: {
+    color: 'rgba(255, 220, 100, 0.9)',
   },
   resultIcon: {
     fontSize: '0.7rem',

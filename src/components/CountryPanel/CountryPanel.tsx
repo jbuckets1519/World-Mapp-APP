@@ -17,6 +17,10 @@ interface CountryPanelProps {
   onOpenGallery: () => void;
   friendViewMode?: boolean;
   friendName?: string | null;
+  /** Bucketlist controls */
+  isInBucketlist?: boolean;
+  onAddToBucketlist?: () => void;
+  onRemoveFromBucketlist?: () => void;
 }
 
 /** Build a display string from stored visit dates */
@@ -43,6 +47,9 @@ export default function CountryPanel({
   onOpenGallery,
   friendViewMode = false,
   friendName,
+  isInBucketlist = false,
+  onAddToBucketlist,
+  onRemoveFromBucketlist,
 }: CountryPanelProps) {
   const displayName = city ? city.name : country?.properties.NAME ?? '';
   const subtitle = city ? city.country : null;
@@ -192,6 +199,19 @@ export default function CountryPanel({
               onClick={isVisited ? onRemoveVisited : handleMarkVisitedClick}
             >
               {isVisited ? '✓ Visited' : 'Mark as visited'}
+            </button>
+          )}
+
+          {/* Bucketlist toggle */}
+          {!showNewDatePicker && !friendViewMode && onAddToBucketlist && (
+            <button
+              style={{
+                ...styles.bucketlistBtn,
+                ...(isInBucketlist ? styles.bucketlistBtnActive : {}),
+              }}
+              onClick={isInBucketlist ? onRemoveFromBucketlist : onAddToBucketlist}
+            >
+              {isInBucketlist ? '★ In Bucketlist' : '☆ Add to Bucketlist'}
             </button>
           )}
 
@@ -354,6 +374,18 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(100, 180, 255, 0.2)', borderRadius: '8px',
     color: 'rgba(100, 180, 255, 0.7)', fontSize: '0.85rem', cursor: 'pointer',
     fontFamily: 'inherit',
+  },
+  bucketlistBtn: {
+    width: '100%', padding: '0.5rem', marginBottom: '0.75rem',
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(255, 220, 100, 0.15)', borderRadius: '8px',
+    color: 'rgba(255, 220, 100, 0.6)', fontSize: '0.82rem', cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  bucketlistBtnActive: {
+    background: 'rgba(255, 220, 100, 0.1)',
+    borderColor: 'rgba(255, 220, 100, 0.3)',
+    color: 'rgba(255, 220, 100, 0.9)',
   },
   loginHint: { color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.8rem', textAlign: 'center', margin: 0 },
   // --- Date section ---

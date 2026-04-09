@@ -8,6 +8,7 @@ import PhotoGallery from './components/CountryPanel/PhotoGallery';
 import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
 import { FriendsPanel, FriendOverlay } from './components/Friends';
+import { BucketlistPanel } from './components/Bucketlist';
 import { AuthOverlay, UserIndicator, ProfileEditor, ProfileView, ProfileSetup } from './components/Auth';
 import PerfMonitor from './components/PerfMonitor';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
@@ -17,6 +18,7 @@ import { useTravelPhotos } from './hooks/useTravelPhotos';
 import { useFriends } from './hooks/useFriends';
 import { useFriendData } from './hooks/useFriendData';
 import { useProfile } from './hooks/useProfile';
+import { useBucketlist } from './hooks/useBucketlist';
 import type { GeoJsonFeature, CityPoint } from './types';
 import { isUNMember } from './data/un-members';
 
@@ -93,6 +95,19 @@ export default function App() {
     getFriendPlace,
     loadFriendPhotos,
   } = useFriendData();
+
+  const {
+    items: bucketlistItems,
+    bucketlistIds,
+    loading: bucketlistLoading,
+    addItem: addBucketlistItem,
+    removeItem: removeBucketlistItem,
+    isInBucketlist,
+  } = useBucketlist(user?.id ?? null);
+
+  const [showBucketlistOverlay, setShowBucketlistOverlay] = useState(false);
+  // Version counter to trigger globe re-render when bucketlist changes
+  const bucketlistVersion = bucketlistItems.length;
 
   const globeRef = useRef<GlobeHandle>(null);
 
@@ -365,6 +380,8 @@ export default function App() {
         onCityClick={handleCityClick}
         onZoomChange={handleZoomChange}
         onGlobeClick={handleClose}
+        bucketlistIds={showBucketlistOverlay ? bucketlistIds : undefined}
+        bucketlistVersion={showBucketlistOverlay ? bucketlistVersion : 0}
       />
       <SearchBar
         cities={allCities}
@@ -372,6 +389,9 @@ export default function App() {
         onSelectCity={handleSearchSelectCity}
         onSelectPolygon={handleSearchSelectPolygon}
         onFlyTo={handleFlyTo}
+        isInBucketlist={user ? isInBucketlist : undefined}
+        onAddToBucketlist={user ? (t, id, n) => { addBucketlistItem(t, id, n); } : undefined}
+        onRemoveFromBucketlist={user ? (id) => { removeBucketlistItem(id); } : undefined}
       />
       <ZoomIndicator level={zoomLevel} />
       <PerfMonitor polygonCount={polygons.length} cityCount={visibleCities.length} />
@@ -406,6 +426,13 @@ export default function App() {
             profile={profile}
             onSignOut={signOut}
             onEditProfile={() => setShowProfileEditor(true)}
+          />
+          <BucketlistPanel
+            items={bucketlistItems}
+            loading={bucketlistLoading}
+            showOverlay={showBucketlistOverlay}
+            onToggleOverlay={() => setShowBucketlistOverlay((v) => !v)}
+            onRemove={removeBucketlistItem}
           />
           <FriendsPanel
             following={following}
@@ -463,6 +490,9 @@ export default function App() {
             onClose={handleClose}
             photoCount={panelPhotos.length}
             onOpenGallery={() => setShowGallery(true)}
+            isInBucketlist={isInBucketlist(selectedPlaceId)}
+            onAddToBucketlist={() => addBucketlistItem(selectedPlaceType, selectedPlaceId, selectedPlaceName)}
+            onRemoveFromBucketlist={() => removeBucketlistItem(selectedPlaceId)}
           />
         )
       )}

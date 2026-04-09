@@ -287,9 +287,9 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
         const px = cosLat * Math.sin(lngR);
         const py = Math.sin(latR);
         const pz = cosLat * Math.cos(lngR);
-        // Dot product > 0 means same hemisphere as camera (visible)
+        // Dot product threshold: cos(63°) ≈ 0.45 hides dots near the curved edge
         const dot = px * cx + py * cy + pz * cz;
-        el.style.display = dot > 0 ? '' : 'none';
+        el.style.display = dot > 0.45 ? '' : 'none';
       });
       rafId = requestAnimationFrame(cull);
     };

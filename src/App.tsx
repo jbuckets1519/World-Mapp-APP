@@ -462,6 +462,7 @@ export default function App() {
           onUpload={isFriendView ? async () => false : handlePhotoUpload}
           onDelete={isFriendView ? async () => false : deletePhoto}
           onClose={() => setShowGallery(false)}
+          readOnly={isFriendView}
         />
       )}
 

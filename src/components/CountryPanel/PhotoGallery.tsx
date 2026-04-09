@@ -9,6 +9,8 @@ interface PhotoGalleryProps {
   onUpload: (file: File) => Promise<boolean>;
   onDelete: (photoId: string, filePath: string) => Promise<boolean>;
   onClose: () => void;
+  /** When true, hide upload and delete controls (friend view) */
+  readOnly?: boolean;
 }
 
 /**
@@ -24,6 +26,7 @@ export default function PhotoGallery({
   onUpload,
   onDelete,
   onClose,
+  readOnly = false,
 }: PhotoGalleryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -68,23 +71,27 @@ export default function PhotoGallery({
         </button>
       </div>
 
-      {/* Upload bar */}
+      {/* Upload bar — hidden in read-only (friend view) mode */}
       <div style={galleryStyles.uploadBar}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleFileSelect}
-        />
-        <button
-          style={galleryStyles.uploadBtn}
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-        >
-          {uploading ? 'Uploading...' : '+ Add Photos'}
-        </button>
+        {!readOnly && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handleFileSelect}
+            />
+            <button
+              style={galleryStyles.uploadBtn}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? 'Uploading...' : '+ Add Photos'}
+            </button>
+          </>
+        )}
         {hasPhotos && (
           <span style={galleryStyles.photoCount}>
             {photos.length} photo{photos.length !== 1 ? 's' : ''}
@@ -110,19 +117,23 @@ export default function PhotoGallery({
                 ) : (
                   <div style={galleryStyles.thumbPlaceholder}>?</div>
                 )}
-                <button
-                  style={galleryStyles.thumbDeleteBtn}
-                  onClick={() => handleDelete(photo)}
-                  disabled={deletingId === photo.id}
-                  aria-label={`Delete ${photo.file_name}`}
-                >
-                  {deletingId === photo.id ? '...' : '✕'}
-                </button>
+                {!readOnly && (
+                  <button
+                    style={galleryStyles.thumbDeleteBtn}
+                    onClick={() => handleDelete(photo)}
+                    disabled={deletingId === photo.id}
+                    aria-label={`Delete ${photo.file_name}`}
+                  >
+                    {deletingId === photo.id ? '...' : '✕'}
+                  </button>
+                )}
               </div>
             ))}
           </div>
         ) : (
-          <div style={galleryStyles.emptyText}>No photos yet — click "Add Photos" above</div>
+          <div style={galleryStyles.emptyText}>
+            {readOnly ? 'No photos yet' : 'No photos yet — click "Add Photos" above'}
+          </div>
         )}
       </div>
 

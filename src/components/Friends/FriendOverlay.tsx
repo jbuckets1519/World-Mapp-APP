@@ -41,8 +41,9 @@ export default function FriendOverlay({
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // Don't show if user isn't following anyone
-  if (following.length === 0) return null;
+  // Only show when actively viewing a friend's map (options panel + name display)
+  // The "View friend's map" selector has moved to the Friends tab
+  if (!activeFriendId) return null;
 
   const activeFriend = activeFriendId
     ? following.find((f) => f.following_id === activeFriendId)

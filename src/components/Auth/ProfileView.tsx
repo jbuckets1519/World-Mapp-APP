@@ -16,6 +16,8 @@ interface ProfileViewProps {
   onFollow: (targetId: string) => Promise<boolean>;
   onUnfollow: (targetId: string) => Promise<boolean>;
   onClose: () => void;
+  /** Switch to globe tab and show this friend's visited places */
+  onViewMap?: (friendId: string) => void;
 }
 
 /**
@@ -29,6 +31,7 @@ export default function ProfileView({
   onFollow,
   onUnfollow,
   onClose,
+  onViewMap,
 }: ProfileViewProps) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -162,6 +165,16 @@ export default function ProfileView({
                   : 'Follow'}
             </button>
 
+            {/* View Map button — only shown for users you're following */}
+            {isFollowing && onViewMap && (
+              <button
+                style={styles.viewMapBtn}
+                onClick={() => onViewMap(userId)}
+              >
+                View Map
+              </button>
+            )}
+
             {/* Travel stats — visible to friends */}
             <TravelStats places={places} photoCount={photoCount} />
 
@@ -272,5 +285,18 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(255, 255, 255, 0.06)',
     borderColor: 'rgba(255, 255, 255, 0.15)',
     color: 'rgba(255, 255, 255, 0.5)',
+  },
+  viewMapBtn: {
+    width: '100%',
+    padding: '0.65rem',
+    marginTop: '0.5rem',
+    background: 'rgba(220, 50, 50, 0.8)',
+    border: '1px solid rgba(255, 80, 80, 0.5)',
+    borderRadius: '8px',
+    color: '#fff',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
 };

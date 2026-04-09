@@ -155,6 +155,13 @@ export default function App() {
     setShowGallery(false);
   }, []);
 
+  // View a friend's map: load their places, switch to globe tab, close profile modal
+  const handleViewFriendMap = useCallback((friendId: string) => {
+    loadFriendPlaces(friendId);
+    setActiveTab('globe');
+    setViewingProfileId(null);
+  }, [loadFriendPlaces]);
+
   // Are we viewing a friend's map? This drives the entire UI mode.
   const isFriendView = Boolean(activeFriendId);
 
@@ -596,6 +603,7 @@ export default function App() {
           onFollow={follow}
           onUnfollow={unfollow}
           onClose={() => setViewingProfileId(null)}
+          onViewMap={handleViewFriendMap}
         />
       )}
 

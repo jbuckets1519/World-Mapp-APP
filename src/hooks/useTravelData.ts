@@ -12,8 +12,6 @@ export interface VisitedPlace {
   visit_start_date: string | null;
   /** Optional visit end date (YYYY-MM-DD) */
   visit_end_date: string | null;
-  /** Controls globe highlight only — data persists regardless */
-  is_visited: boolean;
 }
 
 /** Date info passed when marking a place as visited */
@@ -74,11 +72,8 @@ export function useTravelData(userId: string | null) {
   // Track whether we've already verified the profile exists this session
   const profileChecked = useRef(false);
 
-  // Only is_visited=true rows get the globe highlight
-  const visitedIds = useMemo(
-    () => new Set(places.filter((p) => p.is_visited).map((p) => p.place_id)),
-    [places],
-  );
+  // Memoized set of visited place IDs for O(1) lookup
+  const visitedIds = useMemo(() => new Set(places.map((p) => p.place_id)), [places]);
 
   // Fetch all visited places for the current user
   const loadPlaces = useCallback(async () => {
@@ -125,8 +120,8 @@ export function useTravelData(userId: string | null) {
     }
   }, [userId, loadPlaces]);
 
-  // Mark a place as visited. If a row already exists (is_visited=false),
-  // reactivate it — all existing notes, photos, and dates stay untouched.
+  // Mark a place as visited, optionally with initial notes.
+  // Returns true on success, false on failure.
   const markVisited = useCallback(
     async (
       placeType: 'country' | 'territory' | 'state' | 'city',
@@ -140,38 +135,6 @@ export function useTravelData(userId: string | null) {
         return false;
       }
       console.log('[TravelData] markVisited →', { placeType, placeId, placeName, notes, dates, userId });
-
-      // Check for an existing row (may be soft-deleted with is_visited=false)
-      const typesToCheck = (placeType === 'country' || placeType === 'territory')
-        ? ['country', 'territory'] : [placeType];
-      const existing = places.find(
-        (p) => typesToCheck.includes(p.place_type) && p.place_id === placeId,
-      );
-
-      if (existing) {
-        // Reactivate — only flip the flag, optionally set dates if provided
-        const updates: Record<string, unknown> = { is_visited: true };
-        if (dates) {
-          updates.visit_start_date = dates.startDate;
-          updates.visit_end_date = dates.endDate;
-        }
-        const { data, error } = await supabase
-          .from('visited_places')
-          .update(updates)
-          .eq('id', existing.id)
-          .select()
-          .single();
-
-        if (error) {
-          console.error('[TravelData] markVisited (reactivate) ERROR:', error.message, error);
-          return false;
-        }
-        setPlaces((prev) => prev.map((p) => p.id === existing.id ? data as VisitedPlace : p));
-        setVersion((v) => v + 1);
-        return true;
-      }
-
-      // No existing row — insert new
       const { data, error } = await supabase
         .from('visited_places')
         .insert({
@@ -180,7 +143,6 @@ export function useTravelData(userId: string | null) {
           place_id: placeId,
           place_name: placeName,
           notes,
-          is_visited: true,
           visit_start_date: dates?.startDate ?? null,
           visit_end_date: dates?.endDate ?? null,
         })
@@ -196,10 +158,12 @@ export function useTravelData(userId: string | null) {
       setVersion((v) => v + 1);
       return true;
     },
-    [userId, places],
+    [userId],
   );
 
-  // Remove the globe highlight only — notes, photos, and dates stay intact.
+  // Remove a visited place
+  // Remove a visited place — matches both 'country' and 'territory' types
+  // so old data stored under the wrong type still gets removed
   const removeVisited = useCallback(
     async (placeType: string, placeId: string) => {
       if (!userId || !isSupabaseConfigured) {
@@ -210,7 +174,7 @@ export function useTravelData(userId: string | null) {
       const isPolygon = placeType === 'country' || placeType === 'territory';
       let query = supabase
         .from('visited_places')
-        .update({ is_visited: false })
+        .delete()
         .eq('user_id', userId)
         .eq('place_id', placeId);
       query = isPolygon
@@ -223,14 +187,10 @@ export function useTravelData(userId: string | null) {
         console.error('[TravelData] removeVisited ERROR:', error.message, error);
         return;
       }
-      console.log('[TravelData] removeVisited OK (is_visited → false)');
+      console.log('[TravelData] removeVisited OK');
       const typesToCheck = isPolygon ? ['country', 'territory'] : [placeType];
       setPlaces((prev) =>
-        prev.map((p) =>
-          typesToCheck.includes(p.place_type) && p.place_id === placeId
-            ? { ...p, is_visited: false }
-            : p,
-        ),
+        prev.filter((p) => !(typesToCheck.includes(p.place_type) && p.place_id === placeId)),
       );
       setVersion((v) => v + 1);
     },
@@ -281,39 +241,7 @@ export function useTravelData(userId: string | null) {
     [userId],
   );
 
-  // Update visit dates on an existing row.
-  const updateDates = useCallback(
-    async (placeType: string, placeId: string, dates: VisitDates): Promise<boolean> => {
-      if (!userId || !isSupabaseConfigured) return false;
-      const isPolygon = placeType === 'country' || placeType === 'territory';
-      let query = supabase
-        .from('visited_places')
-        .update({ visit_start_date: dates.startDate, visit_end_date: dates.endDate })
-        .eq('user_id', userId)
-        .eq('place_id', placeId);
-      query = isPolygon
-        ? query.in('place_type', ['country', 'territory'])
-        : query.eq('place_type', placeType);
-
-      const { data, error } = await query.select();
-      if (error) {
-        console.error('[TravelData] updateDates ERROR:', error.message);
-        return false;
-      }
-      if (!data || data.length === 0) return false;
-      const typesToCheck = isPolygon ? ['country', 'territory'] : [placeType];
-      setPlaces((prev) =>
-        prev.map((p) =>
-          typesToCheck.includes(p.place_type) && p.place_id === placeId
-            ? { ...p, visit_start_date: dates.startDate, visit_end_date: dates.endDate }
-            : p,
-        ),
-      );
-      return true;
-    },
-    [userId],
-  );
-
+  // Get a specific place's data
   // Look up a place — for country/territory, check both types to handle
   // older data that stored territories as 'country'
   const getPlace = useCallback(
@@ -338,7 +266,6 @@ export function useTravelData(userId: string | null) {
     markVisited,
     removeVisited,
     updateNotes,
-    updateDates,
     getPlace,
   };
 }

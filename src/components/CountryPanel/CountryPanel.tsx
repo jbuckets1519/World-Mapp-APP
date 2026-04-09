@@ -12,7 +12,6 @@ interface CountryPanelProps {
   onMarkVisited: (notes: string, dates?: VisitDates) => Promise<boolean>;
   onRemoveVisited: () => void;
   onNotesChange: (notes: string) => Promise<boolean>;
-  onUpdateDates: (dates: VisitDates) => Promise<boolean>;
   onClose: () => void;
   photoCount: number;
   onOpenGallery: () => void;
@@ -27,11 +26,13 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const CURRENT_YEAR = new Date().getFullYear();
+// Allow dates going back 100 years
 const YEAR_OPTIONS = Array.from({ length: 101 }, (_, i) => CURRENT_YEAR - i);
 
 /** Format a YYYY-MM-DD date string for display */
 function formatDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
+  // Month-only dates have day = 01
   const month = MONTHS[m - 1] ?? '';
   if (d === 1) return `${month} ${y}`;
   return `${month} ${d}, ${y}`;
@@ -41,17 +42,12 @@ function formatDate(dateStr: string): string {
 function formatVisitDates(start: string | null, end: string | null): string | null {
   if (!start && !end) return null;
   if (start && end) {
-    if (start === end) return formatDate(start);
+    // If both are first-of-month, treat as month/year display
+    const sameMonth = start === end;
+    if (sameMonth) return formatDate(start);
     return `${formatDate(start)} — ${formatDate(end)}`;
   }
   return formatDate(start ?? end!);
-}
-
-/** Detect whether stored dates are month-only or range */
-function detectDateMode(start: string | null, end: string | null): 'month' | 'range' {
-  if (!start && !end) return 'month';
-  if (start && end && start === end && start.endsWith('-01')) return 'month';
-  return 'range';
 }
 
 export default function CountryPanel({
@@ -62,98 +58,78 @@ export default function CountryPanel({
   onMarkVisited,
   onRemoveVisited,
   onNotesChange,
-  onUpdateDates,
   onClose,
   photoCount,
   onOpenGallery,
   friendViewMode = false,
   friendName,
 }: CountryPanelProps) {
+  // Derive display name from whichever selection is active
   const displayName = city ? city.name : country?.properties.NAME ?? '';
   const subtitle = city ? city.country : null;
 
-  // Whether the globe highlight is active (independent of data existence)
-  const isVisited = Boolean(visitedData?.is_visited);
-  // Whether a row exists in the DB at all
-  const hasData = Boolean(visitedData);
-
+  const isVisited = Boolean(visitedData);
   const [notes, setNotes] = useState(visitedData?.notes ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const notesRef = useRef(notes);
   notesRef.current = notes;
 
-  // Date picker for first-time "Mark as visited" flow
-  const [showNewDatePicker, setShowNewDatePicker] = useState(false);
-
-  // Inline date editor state
+  // Date selector state
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState<'month' | 'range'>('month');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
-  const [dateSaveStatus, setDateSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-  // Sync state when selection or data changes
   useEffect(() => {
     setNotes(visitedData?.notes ?? '');
     setSaveStatus('idle');
-    setShowNewDatePicker(false);
-    setDateSaveStatus('idle');
-
-    // Pre-populate date fields from existing data
-    const start = visitedData?.visit_start_date ?? null;
-    const end = visitedData?.visit_end_date ?? null;
-    const mode = detectDateMode(start, end);
-    setDateMode(mode);
-    if (mode === 'month' && start) {
-      const [y, m] = start.split('-').map(Number);
-      setSelectedMonth(m - 1);
-      setSelectedYear(y);
-    } else {
-      setSelectedMonth(new Date().getMonth());
-      setSelectedYear(CURRENT_YEAR);
-    }
-    setRangeStart(mode === 'range' && start ? start : '');
-    setRangeEnd(mode === 'range' && end ? end : '');
+    setShowDatePicker(false);
   }, [visitedData, displayName]);
 
+  /** User clicks "Mark as visited" — show the date picker inline */
+  const handleMarkVisitedClick = () => {
+    setShowDatePicker(true);
+  };
+
   /** Build VisitDates from the current picker state */
-  const buildDates = (): VisitDates => {
+  const buildDates = (): VisitDates | undefined => {
     if (dateMode === 'month') {
+      // Month/year → first day of that month
       const mm = String(selectedMonth + 1).padStart(2, '0');
       const date = `${selectedYear}-${mm}-01`;
       return { startDate: date, endDate: date };
     }
-    return { startDate: rangeStart || null, endDate: rangeEnd || null };
+    // Range mode
+    if (rangeStart || rangeEnd) {
+      return {
+        startDate: rangeStart || null,
+        endDate: rangeEnd || null,
+      };
+    }
+    return undefined;
   };
 
-  // --- "Mark as visited" click ---
-  const handleMarkVisitedClick = () => {
-    if (hasData) {
-      // Row already exists (was unvisited) — just flip the flag
-      onMarkVisited(visitedData!.notes);
-    } else {
-      // First time — show date picker before saving
-      setShowNewDatePicker(true);
+  /** Confirm the date selection and save */
+  const handleConfirmDate = async () => {
+    const dates = buildDates();
+    const ok = await onMarkVisited(notesRef.current, dates);
+    if (ok) {
+      setShowDatePicker(false);
     }
   };
 
-  const handleConfirmNewDate = async () => {
-    const ok = await onMarkVisited(notesRef.current, buildDates());
-    if (ok) setShowNewDatePicker(false);
-  };
-
-  const handleSkipNewDate = async () => {
+  /** Skip date selection — save with no dates */
+  const handleSkipDate = async () => {
     const ok = await onMarkVisited(notesRef.current);
-    if (ok) setShowNewDatePicker(false);
+    if (ok) {
+      setShowDatePicker(false);
+    }
   };
 
-  // --- Save dates on an existing row ---
-  const handleSaveDates = async () => {
-    setDateSaveStatus('saving');
-    const ok = await onUpdateDates(buildDates());
-    setDateSaveStatus(ok ? 'saved' : 'error');
-    setTimeout(() => setDateSaveStatus('idle'), 1500);
+  const handleRemoveVisited = () => {
+    onRemoveVisited();
   };
 
   const handleSaveNotes = async () => {
@@ -161,11 +137,9 @@ export default function CountryPanel({
     setSaveStatus('saving');
 
     let ok: boolean;
-    if (hasData) {
-      // Row exists — update notes on existing row
+    if (isVisited) {
       ok = await onNotesChange(currentNotes);
     } else {
-      // No row yet — create one
       ok = await onMarkVisited(currentNotes);
     }
 
@@ -178,7 +152,12 @@ export default function CountryPanel({
     }
   };
 
-  // --- Friend view mode: read-only ---
+  // Formatted date display for visited places
+  const visitDateDisplay = visitedData
+    ? formatVisitDates(visitedData.visit_start_date, visitedData.visit_end_date)
+    : null;
+
+  // --- Friend view mode: read-only panel showing their data ---
   if (friendViewMode) {
     const friendDateDisplay = visitedData
       ? formatVisitDates(visitedData.visit_start_date, visitedData.visit_end_date)
@@ -196,6 +175,7 @@ export default function CountryPanel({
           </button>
         </div>
 
+        {/* Friend attribution */}
         <div style={styles.friendBadge}>
           <span style={styles.friendDot} />
           {friendName}'s map
@@ -227,7 +207,7 @@ export default function CountryPanel({
     );
   }
 
-  // --- Own map mode ---
+  // --- Own map mode: editable panel ---
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
@@ -242,67 +222,107 @@ export default function CountryPanel({
 
       {isLoggedIn ? (
         <>
-          {/* Visited toggle — hidden while the new-place date picker is open */}
-          {!showNewDatePicker && (
+          {/* Mark as visited / Visited button */}
+          {!showDatePicker && (
             <button
               style={{
                 ...styles.visitedBtn,
                 ...(isVisited ? styles.visitedBtnActive : {}),
               }}
-              onClick={isVisited ? onRemoveVisited : handleMarkVisitedClick}
+              onClick={isVisited ? handleRemoveVisited : handleMarkVisitedClick}
             >
               {isVisited ? '✓ Visited' : 'Mark as visited'}
             </button>
           )}
 
-          {/* Date picker for first-time visits only (no existing row) */}
-          {showNewDatePicker && (
+          {/* Inline date selector — appears after clicking "Mark as visited" */}
+          {showDatePicker && (
             <div style={styles.datePicker}>
               <div style={styles.datePickerHeader}>When did you visit?</div>
-              <DatePickerFields
-                dateMode={dateMode} selectedMonth={selectedMonth} selectedYear={selectedYear}
-                rangeStart={rangeStart} rangeEnd={rangeEnd}
-                onDateModeChange={setDateMode} onMonthChange={setSelectedMonth}
-                onYearChange={setSelectedYear} onRangeStartChange={setRangeStart}
-                onRangeEndChange={setRangeEnd}
-              />
+
+              {/* Mode toggle */}
+              <div style={styles.modeToggle}>
+                <button
+                  style={{
+                    ...styles.modeBtn,
+                    ...(dateMode === 'month' ? styles.modeBtnActive : {}),
+                  }}
+                  onClick={() => setDateMode('month')}
+                >
+                  Month / Year
+                </button>
+                <button
+                  style={{
+                    ...styles.modeBtn,
+                    ...(dateMode === 'range' ? styles.modeBtnActive : {}),
+                  }}
+                  onClick={() => setDateMode('range')}
+                >
+                  Date Range
+                </button>
+              </div>
+
+              {dateMode === 'month' ? (
+                // Month + Year dropdowns
+                <div style={styles.monthYearRow}>
+                  <select
+                    style={styles.select}
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  >
+                    {MONTHS.map((m, i) => (
+                      <option key={m} value={i}>{m}</option>
+                    ))}
+                  </select>
+                  <select
+                    style={styles.select}
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  >
+                    {YEAR_OPTIONS.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                // Start / End date inputs
+                <div style={styles.rangeRow}>
+                  <label style={styles.rangeLabel}>
+                    <span style={styles.rangeLabelText}>From</span>
+                    <input
+                      type="date"
+                      style={styles.dateInput}
+                      value={rangeStart}
+                      onChange={(e) => setRangeStart(e.target.value)}
+                    />
+                  </label>
+                  <label style={styles.rangeLabel}>
+                    <span style={styles.rangeLabelText}>To</span>
+                    <input
+                      type="date"
+                      style={styles.dateInput}
+                      value={rangeEnd}
+                      onChange={(e) => setRangeEnd(e.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
+
+              {/* Confirm / Skip buttons */}
               <div style={styles.dateActions}>
-                <button style={styles.confirmBtn} onClick={handleConfirmNewDate}>
+                <button style={styles.confirmBtn} onClick={handleConfirmDate}>
                   Save with date
                 </button>
-                <button style={styles.skipBtn} onClick={handleSkipNewDate}>
+                <button style={styles.skipBtn} onClick={handleSkipDate}>
                   Skip — no date
                 </button>
               </div>
             </div>
           )}
 
-          {/* Inline date editor — always visible when a DB row exists */}
-          {hasData && !showNewDatePicker && (
-            <div style={styles.datePicker}>
-              <div style={styles.datePickerHeader}>Visit dates</div>
-              <DatePickerFields
-                dateMode={dateMode} selectedMonth={selectedMonth} selectedYear={selectedYear}
-                rangeStart={rangeStart} rangeEnd={rangeEnd}
-                onDateModeChange={setDateMode} onMonthChange={setSelectedMonth}
-                onYearChange={setSelectedYear} onRangeStartChange={setRangeStart}
-                onRangeEndChange={setRangeEnd}
-              />
-              <button
-                style={{
-                  ...styles.confirmBtn, width: '100%',
-                  ...(dateSaveStatus === 'saved' ? styles.saveBtnSaved : {}),
-                  ...(dateSaveStatus === 'error' ? styles.saveBtnError : {}),
-                }}
-                onClick={handleSaveDates}
-                disabled={dateSaveStatus === 'saving'}
-              >
-                {dateSaveStatus === 'saving' ? 'Saving...'
-                  : dateSaveStatus === 'saved' ? 'Saved!'
-                    : dateSaveStatus === 'error' ? 'Failed'
-                      : 'Save Dates'}
-              </button>
-            </div>
+          {/* Show visit dates below the visited button */}
+          {isVisited && visitDateDisplay && !showDatePicker && (
+            <div style={styles.dateDisplay}>{visitDateDisplay}</div>
           )}
 
           <textarea
@@ -341,67 +361,6 @@ export default function CountryPanel({
   );
 }
 
-// --- Shared date picker fields ---
-
-interface DatePickerFieldsProps {
-  dateMode: 'month' | 'range';
-  selectedMonth: number;
-  selectedYear: number;
-  rangeStart: string;
-  rangeEnd: string;
-  onDateModeChange: (mode: 'month' | 'range') => void;
-  onMonthChange: (month: number) => void;
-  onYearChange: (year: number) => void;
-  onRangeStartChange: (val: string) => void;
-  onRangeEndChange: (val: string) => void;
-}
-
-function DatePickerFields({
-  dateMode, selectedMonth, selectedYear, rangeStart, rangeEnd,
-  onDateModeChange, onMonthChange, onYearChange, onRangeStartChange, onRangeEndChange,
-}: DatePickerFieldsProps) {
-  return (
-    <>
-      <div style={styles.modeToggle}>
-        <button
-          style={{ ...styles.modeBtn, ...(dateMode === 'month' ? styles.modeBtnActive : {}) }}
-          onClick={() => onDateModeChange('month')}
-        >Month / Year</button>
-        <button
-          style={{ ...styles.modeBtn, ...(dateMode === 'range' ? styles.modeBtnActive : {}) }}
-          onClick={() => onDateModeChange('range')}
-        >Date Range</button>
-      </div>
-
-      {dateMode === 'month' ? (
-        <div style={styles.monthYearRow}>
-          <select style={styles.select} value={selectedMonth}
-            onChange={(e) => onMonthChange(Number(e.target.value))}>
-            {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-          </select>
-          <select style={styles.select} value={selectedYear}
-            onChange={(e) => onYearChange(Number(e.target.value))}>
-            {YEAR_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-      ) : (
-        <div style={styles.rangeRow}>
-          <label style={styles.rangeLabel}>
-            <span style={styles.rangeLabelText}>From</span>
-            <input type="date" style={styles.dateInput} value={rangeStart}
-              onChange={(e) => onRangeStartChange(e.target.value)} />
-          </label>
-          <label style={styles.rangeLabel}>
-            <span style={styles.rangeLabelText}>To</span>
-            <input type="date" style={styles.dateInput} value={rangeEnd}
-              onChange={(e) => onRangeEndChange(e.target.value)} />
-          </label>
-        </div>
-      )}
-    </>
-  );
-}
-
 const styles: Record<string, React.CSSProperties> = {
   panel: {
     position: 'fixed',
@@ -424,18 +383,39 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     marginBottom: '0.75rem',
   },
-  name: { fontSize: '1.1rem', fontWeight: 600, color: '#fff', margin: 0 },
-  subtitle: { fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)', margin: '0.15rem 0 0 0' },
-  closeBtn: {
-    background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: '1.25rem', cursor: 'pointer', padding: '0.25rem 0.5rem',
-    borderRadius: '6px', lineHeight: 1,
+  name: {
+    fontSize: '1.1rem',
+    fontWeight: 600,
+    color: '#fff',
+    margin: 0,
   },
+  subtitle: {
+    fontSize: '0.8rem',
+    color: 'rgba(255, 255, 255, 0.5)',
+    margin: '0.15rem 0 0 0',
+  },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: '1.25rem',
+    cursor: 'pointer',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '6px',
+    lineHeight: 1,
+  },
+  // --- Own map styles ---
   visitedBtn: {
-    width: '100%', padding: '0.6rem', background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.2)', borderRadius: '8px',
-    color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.85rem', cursor: 'pointer',
-    fontFamily: 'inherit', marginBottom: '0.75rem',
+    width: '100%',
+    padding: '0.6rem',
+    background: 'rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(100, 180, 255, 0.2)',
+    borderRadius: '8px',
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    marginBottom: '0.75rem',
   },
   visitedBtnActive: {
     background: 'rgba(255, 160, 50, 0.15)',
@@ -443,16 +423,29 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(255, 160, 50, 0.9)',
   },
   textarea: {
-    width: '100%', minHeight: '100px', background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(100, 180, 255, 0.15)', borderRadius: '8px',
-    padding: '0.75rem', color: '#fff', fontSize: '0.9rem', fontFamily: 'inherit',
-    resize: 'vertical' as const, outline: 'none', boxSizing: 'border-box' as const,
+    width: '100%',
+    minHeight: '100px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(100, 180, 255, 0.15)',
+    borderRadius: '8px',
+    padding: '0.75rem',
+    color: '#fff',
+    fontSize: '0.9rem',
+    fontFamily: 'inherit',
+    resize: 'vertical' as const,
+    outline: 'none',
+    boxSizing: 'border-box' as const,
     marginBottom: '0.5rem',
   },
   saveBtn: {
-    width: '100%', padding: '0.5rem', background: 'rgba(100, 180, 255, 0.12)',
-    border: '1px solid rgba(100, 180, 255, 0.25)', borderRadius: '8px',
-    color: 'rgba(100, 180, 255, 0.8)', fontSize: '0.85rem', cursor: 'pointer',
+    width: '100%',
+    padding: '0.5rem',
+    background: 'rgba(100, 180, 255, 0.12)',
+    border: '1px solid rgba(100, 180, 255, 0.25)',
+    borderRadius: '8px',
+    color: 'rgba(100, 180, 255, 0.8)',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
     fontFamily: 'inherit',
   },
   saveBtnSaved: {
@@ -466,100 +459,199 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(255, 80, 80, 0.9)',
   },
   galleryBtn: {
-    width: '100%', padding: '0.55rem', marginTop: '0.5rem',
+    width: '100%',
+    padding: '0.55rem',
+    marginTop: '0.5rem',
     background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(100, 180, 255, 0.2)', borderRadius: '8px',
-    color: 'rgba(100, 180, 255, 0.7)', fontSize: '0.85rem', cursor: 'pointer',
+    border: '1px solid rgba(100, 180, 255, 0.2)',
+    borderRadius: '8px',
+    color: 'rgba(100, 180, 255, 0.7)',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
     fontFamily: 'inherit',
   },
-  loginHint: { color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.8rem', textAlign: 'center', margin: 0 },
-  // --- Date picker ---
+  loginHint: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: '0.8rem',
+    textAlign: 'center',
+    margin: 0,
+  },
+  // --- Date picker styles ---
   datePicker: {
-    marginBottom: '0.75rem', padding: '0.85rem',
+    marginBottom: '0.75rem',
+    padding: '0.85rem',
     background: 'rgba(255, 255, 255, 0.03)',
-    border: '1px solid rgba(100, 180, 255, 0.15)', borderRadius: '10px',
+    border: '1px solid rgba(100, 180, 255, 0.15)',
+    borderRadius: '10px',
   },
   datePickerHeader: {
-    fontSize: '0.82rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: '0.82rem',
+    fontWeight: 600,
+    color: 'rgba(255, 255, 255, 0.7)',
     marginBottom: '0.65rem',
   },
-  modeToggle: { display: 'flex', gap: '0.35rem', marginBottom: '0.65rem' },
+  modeToggle: {
+    display: 'flex',
+    gap: '0.35rem',
+    marginBottom: '0.65rem',
+  },
   modeBtn: {
-    flex: 1, padding: '0.4rem', background: 'rgba(255, 255, 255, 0.04)',
-    border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px',
-    color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.75rem', cursor: 'pointer',
-    fontFamily: 'inherit', transition: 'all 0.15s',
+    flex: 1,
+    padding: '0.4rem',
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '6px',
+    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    transition: 'all 0.15s',
   },
   modeBtnActive: {
     background: 'rgba(100, 180, 255, 0.12)',
     borderColor: 'rgba(100, 180, 255, 0.3)',
     color: 'rgba(100, 180, 255, 0.9)',
   },
-  monthYearRow: { display: 'flex', gap: '0.4rem', marginBottom: '0.65rem' },
-  select: {
-    flex: 1, padding: '0.45rem 0.5rem', background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.15)', borderRadius: '6px',
-    color: '#fff', fontSize: '0.8rem', fontFamily: 'inherit', outline: 'none', cursor: 'pointer',
+  monthYearRow: {
+    display: 'flex',
+    gap: '0.4rem',
+    marginBottom: '0.65rem',
   },
-  rangeRow: { display: 'flex', flexDirection: 'column' as const, gap: '0.4rem', marginBottom: '0.65rem' },
-  rangeLabel: { display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  rangeLabelText: { width: '2.5rem', flexShrink: 0, fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.45)' },
+  select: {
+    flex: 1,
+    padding: '0.45rem 0.5rem',
+    background: 'rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(100, 180, 255, 0.15)',
+    borderRadius: '6px',
+    color: '#fff',
+    fontSize: '0.8rem',
+    fontFamily: 'inherit',
+    outline: 'none',
+    cursor: 'pointer',
+  },
+  rangeRow: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '0.4rem',
+    marginBottom: '0.65rem',
+  },
+  rangeLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  rangeLabelText: {
+    width: '2.5rem',
+    flexShrink: 0,
+    fontSize: '0.75rem',
+    color: 'rgba(255, 255, 255, 0.45)',
+  },
   dateInput: {
-    flex: 1, padding: '0.4rem 0.5rem', background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.15)', borderRadius: '6px',
-    color: '#fff', fontSize: '0.8rem', fontFamily: 'inherit', outline: 'none',
+    flex: 1,
+    padding: '0.4rem 0.5rem',
+    background: 'rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(100, 180, 255, 0.15)',
+    borderRadius: '6px',
+    color: '#fff',
+    fontSize: '0.8rem',
+    fontFamily: 'inherit',
+    outline: 'none',
     colorScheme: 'dark',
   },
-  dateActions: { display: 'flex', gap: '0.35rem' },
+  dateActions: {
+    display: 'flex',
+    gap: '0.35rem',
+  },
   confirmBtn: {
-    flex: 1, padding: '0.5rem', background: 'rgba(100, 180, 255, 0.15)',
-    border: '1px solid rgba(100, 180, 255, 0.3)', borderRadius: '6px',
-    color: 'rgba(100, 180, 255, 0.9)', fontSize: '0.8rem', fontWeight: 500,
-    cursor: 'pointer', fontFamily: 'inherit',
+    flex: 1,
+    padding: '0.5rem',
+    background: 'rgba(100, 180, 255, 0.15)',
+    border: '1px solid rgba(100, 180, 255, 0.3)',
+    borderRadius: '6px',
+    color: 'rgba(100, 180, 255, 0.9)',
+    fontSize: '0.8rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
   skipBtn: {
-    flex: 1, padding: '0.5rem', background: 'rgba(255, 255, 255, 0.04)',
-    border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px',
-    color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.8rem', cursor: 'pointer',
+    flex: 1,
+    padding: '0.5rem',
+    background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '6px',
+    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
     fontFamily: 'inherit',
   },
   dateDisplay: {
-    padding: '0.4rem 0.65rem', marginBottom: '0.75rem',
+    padding: '0.4rem 0.65rem',
+    marginBottom: '0.75rem',
     background: 'rgba(100, 180, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.1)', borderRadius: '6px',
-    color: 'rgba(100, 180, 255, 0.7)', fontSize: '0.78rem',
+    border: '1px solid rgba(100, 180, 255, 0.1)',
+    borderRadius: '6px',
+    color: 'rgba(100, 180, 255, 0.7)',
+    fontSize: '0.78rem',
   },
-  // --- Friend view ---
+  // --- Friend view mode styles ---
   friendBadge: {
-    display: 'flex', alignItems: 'center', gap: '0.4rem',
-    color: 'rgba(180, 130, 255, 0.9)', fontSize: '0.78rem', fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    color: 'rgba(180, 130, 255, 0.9)',
+    fontSize: '0.78rem',
+    fontWeight: 600,
     marginBottom: '0.75rem',
   },
   friendDot: {
-    width: '6px', height: '6px', borderRadius: '50%',
-    background: 'rgba(180, 130, 255, 0.7)', flexShrink: 0,
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: 'rgba(180, 130, 255, 0.7)',
+    flexShrink: 0,
   },
   friendVisitedTag: {
-    padding: '0.5rem 0.65rem', background: 'rgba(180, 130, 255, 0.1)',
-    border: '1px solid rgba(180, 130, 255, 0.25)', borderRadius: '8px',
-    color: 'rgba(180, 130, 255, 0.9)', fontSize: '0.82rem', marginBottom: '0.75rem',
+    padding: '0.5rem 0.65rem',
+    background: 'rgba(180, 130, 255, 0.1)',
+    border: '1px solid rgba(180, 130, 255, 0.25)',
+    borderRadius: '8px',
+    color: 'rgba(180, 130, 255, 0.9)',
+    fontSize: '0.82rem',
+    marginBottom: '0.75rem',
   },
-  friendNotesBox: { marginBottom: '0.75rem' },
+  friendNotesBox: {
+    marginBottom: '0.75rem',
+  },
   friendNotesLabel: {
-    color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.7rem', marginBottom: '0.25rem',
-    textTransform: 'uppercase' as const, letterSpacing: '0.05em',
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: '0.7rem',
+    marginBottom: '0.25rem',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
   },
   friendNotesText: {
-    color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.85rem', margin: 0,
-    lineHeight: 1.5, whiteSpace: 'pre-wrap' as const,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: '0.85rem',
+    margin: 0,
+    lineHeight: 1.5,
+    whiteSpace: 'pre-wrap' as const,
   },
   friendGalleryBtn: {
-    width: '100%', padding: '0.55rem', background: 'rgba(180, 130, 255, 0.1)',
-    border: '1px solid rgba(180, 130, 255, 0.25)', borderRadius: '8px',
-    color: 'rgba(180, 130, 255, 0.8)', fontSize: '0.85rem', cursor: 'pointer',
+    width: '100%',
+    padding: '0.55rem',
+    background: 'rgba(180, 130, 255, 0.1)',
+    border: '1px solid rgba(180, 130, 255, 0.25)',
+    borderRadius: '8px',
+    color: 'rgba(180, 130, 255, 0.8)',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
     fontFamily: 'inherit',
   },
   friendNotVisited: {
-    color: 'rgba(255, 255, 255, 0.35)', fontSize: '0.82rem', textAlign: 'center', margin: 0,
+    color: 'rgba(255, 255, 255, 0.35)',
+    fontSize: '0.82rem',
+    textAlign: 'center',
+    margin: 0,
   },
 };

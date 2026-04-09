@@ -60,14 +60,14 @@ const CITY_VISITED_COLOR = 'rgba(80, 200, 120, 0.9)';
 // Selected: bright cyan matching the UI accent
 const CITY_SELECTED_COLOR = 'rgba(100, 220, 255, 1)';
 
-// --- Lake colors (match ocean / globe background) ---
-const LAKE_CAP = 'rgba(0, 5, 15, 0.9)';
-const LAKE_SIDE = 'rgba(0, 5, 15, 0.4)';
+// --- Lake colors — fully opaque to match the ocean surface exactly ---
+const LAKE_CAP = 'rgba(0, 3, 13, 1)';
+const LAKE_SIDE = 'rgba(0, 3, 13, 1)';
 
 // --- Altitudes ---
-// Lakes sit below everything so state/country polygons cover any overlap onto land.
-// Gaps between country/state shorelines (like the Great Lakes) still show the lake.
-const LAKE_ALT = 0.004;
+// Lakes sit just above the globe surface so they punch through country fills
+// and look like continuous water. State/country polygons render above them.
+const LAKE_ALT = 0.006;
 const COUNTRY_ALT = 0.005;
 const COUNTRY_SELECTED_ALT = 0.035;
 const VISITED_ALT = 0.008;

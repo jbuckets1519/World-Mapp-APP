@@ -258,8 +258,8 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getCityAltitude = useCallback(
     (pt: object) => {
       const city = pt as CityPoint;
-      // Flat on surface; only lift selected city slightly
-      return city.id === selectedId ? 0.02 : 0;
+      // Above polygons so city clicks register; selected lifts a bit more
+      return city.id === selectedId ? 0.04 : 0.011;
     },
     [selectedId],
   );

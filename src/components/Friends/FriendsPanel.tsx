@@ -249,7 +249,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(100, 180, 255, 0.15)',
     borderRadius: '8px',
     cursor: 'pointer',
-    zIndex: 20,
+    zIndex: 1000,
   },
   badge: {
     position: 'absolute',
@@ -277,7 +277,7 @@ const styles: Record<string, React.CSSProperties> = {
     backdropFilter: 'blur(12px)',
     border: '1px solid rgba(100, 180, 255, 0.2)',
     borderRadius: '12px',
-    zIndex: 20,
+    zIndex: 1000,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',

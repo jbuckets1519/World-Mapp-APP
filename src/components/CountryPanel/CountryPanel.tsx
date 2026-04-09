@@ -322,7 +322,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(100, 180, 255, 0.2)',
     borderRadius: '12px',
     padding: '1.25rem',
-    zIndex: 10,
+    zIndex: 1000,
   },
   header: {
     display: 'flex',

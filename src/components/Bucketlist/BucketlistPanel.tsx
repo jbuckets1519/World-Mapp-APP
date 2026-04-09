@@ -132,7 +132,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${ACCENT} 0.2)`,
     borderRadius: '8px',
     cursor: 'pointer',
-    zIndex: 10,
+    zIndex: 1000,
     padding: 0,
   },
   badge: {
@@ -162,7 +162,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${ACCENT} 0.2)`,
     borderRadius: '12px',
     padding: '1rem',
-    zIndex: 15,
+    zIndex: 1000,
     display: 'flex',
     flexDirection: 'column',
   },

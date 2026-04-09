@@ -158,7 +158,7 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'fixed',
     top: '8.4rem',
     left: '1rem',
-    zIndex: 20,
+    zIndex: 1000,
   },
   toggleBtn: {
     display: 'flex',

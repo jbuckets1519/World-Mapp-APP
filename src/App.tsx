@@ -34,6 +34,30 @@ const COUNTRIES_WITH_SUBDIVISIONS = new Set([
   'Canada',
 ]);
 
+// Small island nations/territories — hide their city dots at low zoom to reduce clutter
+const SMALL_ISLAND_NATIONS = new Set([
+  // Caribbean
+  'Antigua and Barbuda', 'Aruba', 'Bahamas', 'Barbados', 'British Virgin Islands',
+  'Cayman Islands', 'Curaçao', 'Dominica', 'Grenada', 'Guadeloupe',
+  'Martinique', 'Montserrat', 'Saint Kitts and Nevis', 'Saint Lucia',
+  'Saint Vincent and the Grenadines', 'Sint Maarten', 'Turks and Caicos Islands',
+  'United States Virgin Islands', 'Anguilla', 'Saint Barthélemy',
+  'Saint Martin', 'Bonaire', 'Trinidad and Tobago',
+  // Pacific
+  'Fiji', 'Kiribati', 'Marshall Islands', 'Micronesia', 'Nauru', 'Palau',
+  'Samoa', 'Solomon Islands', 'Tonga', 'Tuvalu', 'Vanuatu',
+  'American Samoa', 'Cook Islands', 'French Polynesia', 'Guam',
+  'New Caledonia', 'Niue', 'Northern Mariana Islands', 'Tokelau',
+  'Wallis and Futuna', 'Pitcairn Islands',
+  // Indian Ocean
+  'Comoros', 'Maldives', 'Mauritius', 'Seychelles', 'Réunion', 'Mayotte',
+  // Atlantic
+  'Cape Verde', 'São Tomé and Principe', 'Bermuda',
+  'Falkland Islands', 'Saint Helena', 'Faroe Islands',
+  // Mediterranean / small European
+  'Malta',
+]);
+
 function distanceToZoomLevel(distance: number): number {
   const clamped = Math.max(MIN_ZOOM_DISTANCE, Math.min(MAX_ZOOM_DISTANCE, distance));
   const ratio = (MAX_ZOOM_DISTANCE - clamped) / (MAX_ZOOM_DISTANCE - MIN_ZOOM_DISTANCE);
@@ -167,8 +191,13 @@ export default function App() {
   }, [zoomLevel]);
 
   const visibleCities = useMemo(() => {
-    return allCities.filter((c) => c.scaleRank <= maxScaleRank);
-  }, [allCities, maxScaleRank]);
+    return allCities.filter((c) => {
+      if (c.scaleRank > maxScaleRank) return false;
+      // Hide small island nation dots at low zoom — they clutter the globe
+      if (zoomLevel < 90 && SMALL_ISLAND_NATIONS.has(c.country)) return false;
+      return true;
+    });
+  }, [allCities, maxScaleRank, zoomLevel]);
 
   const countriesOnly = useMemo(() => {
     if (countries.length === 0) return [];

@@ -226,12 +226,18 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     (pt: object) => {
       const city = pt as CityPoint;
       const z = zoomRef.current;
-      // Base size scales with zoom
-      const base = 0.06 + (z / 100) * 0.22;
+      // Smooth continuous scaling across zoom range:
+      //   z=0  → 0.03  (tiny pinpoints)
+      //   z=40 → 0.07  (small but visible)
+      //   z=70 → 0.13  (moderate)
+      //   z=90 → 0.19  (clearly visible)
+      //   z=100→ 0.22  (max)
+      const t = z / 100;
+      const base = 0.03 + t * t * 0.19;
       // More important cities (lower scaleRank) are slightly larger
-      const rankBonus = Math.max(0, (5 - city.scaleRank) * 0.015);
+      const rankBonus = Math.max(0, (5 - city.scaleRank) * 0.01);
       // Selected city is extra prominent
-      if (city.id === selectedId) return base + rankBonus + 0.15;
+      if (city.id === selectedId) return base + rankBonus + 0.12;
       return base + rankBonus;
     },
     [selectedId, zoomLevel],

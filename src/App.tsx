@@ -353,6 +353,7 @@ export default function App() {
         onPolygonClick={handlePolygonClick}
         onCityClick={handleCityClick}
         onZoomChange={handleZoomChange}
+        onGlobeClick={handleClose}
       />
       <SearchBar
         cities={allCities}

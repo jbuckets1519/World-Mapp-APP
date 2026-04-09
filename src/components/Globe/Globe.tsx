@@ -24,6 +24,8 @@ interface GlobeProps {
   onPolygonClick?: (polygon: GeoJsonFeature) => void;
   onCityClick?: (city: CityPoint) => void;
   onZoomChange?: (distance: number) => void;
+  /** Fires when clicking empty globe space (ocean, etc.) — not a polygon or city */
+  onGlobeClick?: () => void;
 }
 
 const MIN_ZOOM_DISTANCE = 120;
@@ -92,6 +94,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   onPolygonClick,
   onCityClick,
   onZoomChange,
+  onGlobeClick,
 }, ref) {
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
 
@@ -265,6 +268,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       polygonAltitude={getAltitude}
       polygonsTransitionDuration={300}
       onPolygonClick={handleClick}
+      onGlobeClick={onGlobeClick}
       pointsData={cities}
       pointLat="lat"
       pointLng="lng"

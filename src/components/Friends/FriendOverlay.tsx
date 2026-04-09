@@ -50,7 +50,7 @@ export default function FriendOverlay({
     : null;
 
   const activeName = activeFriend
-    ? activeFriend.profile.display_name || activeFriend.profile.email || 'Friend'
+    ? activeFriend.profile.username || activeFriend.profile.display_name || 'Friend'
     : null;
 
   return (
@@ -99,7 +99,7 @@ export default function FriendOverlay({
             <div style={styles.optionsPanel}>
               <label style={styles.toggleLabel}>
                 <span style={styles.toggleText}>
-                  Show {friendName ? `${friendName}'s ` : ''}Bucketlist
+                  Bucketlist
                 </span>
                 <button
                   style={{

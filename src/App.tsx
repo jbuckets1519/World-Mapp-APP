@@ -297,8 +297,11 @@ export default function App() {
     [uploadPhoto, selectedPlaceType, selectedPlaceId],
   );
 
-  const handleMarkVisited = useCallback(async (notes: string): Promise<boolean> => {
-    return markVisited(selectedPlaceType, selectedPlaceId, selectedPlaceName, notes);
+  const handleMarkVisited = useCallback(async (
+    notes: string,
+    dates?: { startDate: string | null; endDate: string | null },
+  ): Promise<boolean> => {
+    return markVisited(selectedPlaceType, selectedPlaceId, selectedPlaceName, notes, dates);
   }, [markVisited, selectedPlaceType, selectedPlaceId, selectedPlaceName]);
 
   const handleRemoveVisited = useCallback(async () => {

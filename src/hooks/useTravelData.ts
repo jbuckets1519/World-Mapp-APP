@@ -8,6 +8,16 @@ export interface VisitedPlace {
   place_name: string;
   notes: string;
   visited_at: string;
+  /** Optional visit start date (YYYY-MM-DD) */
+  visit_start_date: string | null;
+  /** Optional visit end date (YYYY-MM-DD) */
+  visit_end_date: string | null;
+}
+
+/** Date info passed when marking a place as visited */
+export interface VisitDates {
+  startDate: string | null;  // YYYY-MM-DD
+  endDate: string | null;    // YYYY-MM-DD
 }
 
 /**
@@ -113,12 +123,18 @@ export function useTravelData(userId: string | null) {
   // Mark a place as visited, optionally with initial notes.
   // Returns true on success, false on failure.
   const markVisited = useCallback(
-    async (placeType: 'country' | 'territory' | 'state' | 'city', placeId: string, placeName: string, notes = ''): Promise<boolean> => {
+    async (
+      placeType: 'country' | 'territory' | 'state' | 'city',
+      placeId: string,
+      placeName: string,
+      notes = '',
+      dates?: VisitDates,
+    ): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) {
         console.log('[TravelData] markVisited skipped — userId:', userId, 'configured:', isSupabaseConfigured);
         return false;
       }
-      console.log('[TravelData] markVisited →', { placeType, placeId, placeName, notes, userId });
+      console.log('[TravelData] markVisited →', { placeType, placeId, placeName, notes, dates, userId });
       const { data, error } = await supabase
         .from('visited_places')
         .insert({
@@ -127,6 +143,8 @@ export function useTravelData(userId: string | null) {
           place_id: placeId,
           place_name: placeName,
           notes,
+          visit_start_date: dates?.startDate ?? null,
+          visit_end_date: dates?.endDate ?? null,
         })
         .select()
         .single();

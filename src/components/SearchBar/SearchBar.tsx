@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import { getPolygonId } from '../Globe/Globe';
+import { isUNMember } from '../../data/un-members';
 
 /** A single search result that could be a city, country, or state */
 interface SearchResult {
   id: string;
   label: string;
   subtitle: string;
-  type: 'city' | 'country' | 'state';
+  type: 'city' | 'country' | 'territory' | 'state';
   lat: number;
   lng: number;
   city?: CityPoint;
@@ -81,11 +82,13 @@ export default function SearchBar({
       const id = getPolygonId(poly);
       const centroid = getPolygonCentroid(poly);
       const isState = Boolean(poly._isState);
+      const name = poly.properties.NAME as string;
+      const isTerritory = !isState && !isUNMember(name);
       results.push({
         id,
-        label: poly.properties.NAME,
-        subtitle: isState ? 'State / Province' : 'Country',
-        type: isState ? 'state' : 'country',
+        label: name,
+        subtitle: isState ? 'State / Province' : isTerritory ? 'Territory' : 'Country',
+        type: isState ? 'state' : isTerritory ? 'territory' : 'country',
         lat: centroid.lat,
         lng: centroid.lng,
         polygon: poly,

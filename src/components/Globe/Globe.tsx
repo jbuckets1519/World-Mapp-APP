@@ -221,6 +221,9 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const zoomRef = useRef(zoomLevel);
   zoomRef.current = zoomLevel;
 
+  // Track city elements so we can hide back-facing ones each frame
+  const cityElMapRef = useRef(new Map<string, { el: HTMLDivElement; lat: number; lng: number }>());
+
   // Build the HTML element for each city dot
   const getCityElement = useCallback(
     (d: object) => {
@@ -256,10 +259,43 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
         e.stopPropagation();
         onCityClick?.(city);
       });
+      // Register for back-face culling
+      cityElMapRef.current.set(city.id, { el, lat: city.lat, lng: city.lng });
       return el;
     },
     [selectedId, zoomLevel, visitedVersion, onCityClick],
   );
+
+  // Hide city dots on the far side of the globe each frame
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe) return;
+    let rafId: number;
+    const DEG2RAD = Math.PI / 180;
+    const cull = () => {
+      const cam = globe.camera().position;
+      // Camera direction as unit vector
+      const camLen = Math.sqrt(cam.x * cam.x + cam.y * cam.y + cam.z * cam.z);
+      const cx = cam.x / camLen;
+      const cy = cam.y / camLen;
+      const cz = cam.z / camLen;
+      cityElMapRef.current.forEach(({ el, lat, lng }) => {
+        // Convert lat/lng to unit vector (globe.gl uses y-up, z-forward)
+        const latR = lat * DEG2RAD;
+        const lngR = lng * DEG2RAD;
+        const cosLat = Math.cos(latR);
+        const px = cosLat * Math.sin(lngR);
+        const py = Math.sin(latR);
+        const pz = cosLat * Math.cos(lngR);
+        // Dot product > 0 means same hemisphere as camera (visible)
+        const dot = px * cx + py * cy + pz * cz;
+        el.style.display = dot > 0 ? '' : 'none';
+      });
+      rafId = requestAnimationFrame(cull);
+    };
+    rafId = requestAnimationFrame(cull);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   return (
     <ReactGlobe

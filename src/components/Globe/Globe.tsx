@@ -258,8 +258,8 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getCityAltitude = useCallback(
     (pt: object) => {
       const city = pt as CityPoint;
-      // Above polygons so city clicks register; selected lifts a bit more
-      return city.id === selectedId ? 0.04 : 0.011;
+      // Minimal altitude: above polygons for click detection but short enough to look flat
+      return city.id === selectedId ? 0.015 : 0.001;
     },
     [selectedId],
   );
@@ -296,7 +296,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       pointRadius={getCityRadius}
       pointAltitude={getCityAltitude}
       pointLabel={getCityLabel}
-      pointResolution={12}
+      pointResolution={24}
       pointsMerge={false}
       pointsTransitionDuration={300}
       onPointClick={handleCityClick}

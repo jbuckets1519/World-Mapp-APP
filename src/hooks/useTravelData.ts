@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export interface VisitedPlace {
   id: string;
-  place_type: 'country' | 'state' | 'city';
+  place_type: 'country' | 'territory' | 'state' | 'city';
   place_id: string;
   place_name: string;
   notes: string;
@@ -113,7 +113,7 @@ export function useTravelData(userId: string | null) {
   // Mark a place as visited, optionally with initial notes.
   // Returns true on success, false on failure.
   const markVisited = useCallback(
-    async (placeType: 'country' | 'state' | 'city', placeId: string, placeName: string, notes = ''): Promise<boolean> => {
+    async (placeType: 'country' | 'territory' | 'state' | 'city', placeId: string, placeName: string, notes = ''): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) {
         console.log('[TravelData] markVisited skipped — userId:', userId, 'configured:', isSupabaseConfigured);
         return false;
@@ -144,6 +144,8 @@ export function useTravelData(userId: string | null) {
   );
 
   // Remove a visited place
+  // Remove a visited place — matches both 'country' and 'territory' types
+  // so old data stored under the wrong type still gets removed
   const removeVisited = useCallback(
     async (placeType: string, placeId: string) => {
       if (!userId || !isSupabaseConfigured) {
@@ -151,20 +153,26 @@ export function useTravelData(userId: string | null) {
         return;
       }
       console.log('[TravelData] removeVisited →', { placeType, placeId });
-      const { error } = await supabase
+      const isPolygon = placeType === 'country' || placeType === 'territory';
+      let query = supabase
         .from('visited_places')
         .delete()
         .eq('user_id', userId)
-        .eq('place_type', placeType)
         .eq('place_id', placeId);
+      query = isPolygon
+        ? query.in('place_type', ['country', 'territory'])
+        : query.eq('place_type', placeType);
+
+      const { error } = await query;
 
       if (error) {
         console.error('[TravelData] removeVisited ERROR:', error.message, error);
         return;
       }
       console.log('[TravelData] removeVisited OK');
+      const typesToCheck = isPolygon ? ['country', 'territory'] : [placeType];
       setPlaces((prev) =>
-        prev.filter((p) => !(p.place_type === placeType && p.place_id === placeId)),
+        prev.filter((p) => !(typesToCheck.includes(p.place_type) && p.place_id === placeId)),
       );
       setVersion((v) => v + 1);
     },
@@ -172,7 +180,7 @@ export function useTravelData(userId: string | null) {
   );
 
   // Update notes for a place (called by Save button).
-  // Returns true on success, false on failure.
+  // Matches both 'country' and 'territory' for backward compatibility.
   const updateNotes = useCallback(
     async (placeType: string, placeId: string, notes: string): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) {
@@ -180,13 +188,17 @@ export function useTravelData(userId: string | null) {
         return false;
       }
       console.log('[TravelData] updateNotes →', { placeType, placeId, notes });
-      const { data, error } = await supabase
+      const isPolygon = placeType === 'country' || placeType === 'territory';
+      let query = supabase
         .from('visited_places')
         .update({ notes })
         .eq('user_id', userId)
-        .eq('place_type', placeType)
-        .eq('place_id', placeId)
-        .select();
+        .eq('place_id', placeId);
+      query = isPolygon
+        ? query.in('place_type', ['country', 'territory'])
+        : query.eq('place_type', placeType);
+
+      const { data, error } = await query.select();
 
       if (error) {
         console.error('[TravelData] updateNotes ERROR:', error.message, error);
@@ -198,9 +210,10 @@ export function useTravelData(userId: string | null) {
         return false;
       }
       // Update local state
+      const typesToCheck = isPolygon ? ['country', 'territory'] : [placeType];
       setPlaces((prev) =>
         prev.map((p) =>
-          p.place_type === placeType && p.place_id === placeId
+          typesToCheck.includes(p.place_type) && p.place_id === placeId
             ? { ...p, notes }
             : p,
         ),
@@ -211,9 +224,16 @@ export function useTravelData(userId: string | null) {
   );
 
   // Get a specific place's data
+  // Look up a place — for country/territory, check both types to handle
+  // older data that stored territories as 'country'
   const getPlace = useCallback(
     (placeType: string, placeId: string): VisitedPlace | undefined => {
-      const found = places.find((p) => p.place_type === placeType && p.place_id === placeId);
+      const typesToCheck = (placeType === 'country' || placeType === 'territory')
+        ? ['country', 'territory']
+        : [placeType];
+      const found = places.find(
+        (p) => typesToCheck.includes(p.place_type) && p.place_id === placeId,
+      );
       console.log('[TravelData] getPlace →', { placeType, placeId }, '→', found ?? 'NOT FOUND', `(${places.length} places in memory)`);
       return found;
     },

@@ -4,7 +4,7 @@
  * Includes all ~200 sovereign states plus common alternative names.
  */
 
-export const TOTAL_COUNTRIES = 195;
+export const TOTAL_COUNTRIES = 194;
 
 export const CONTINENTS = [
   'Africa',

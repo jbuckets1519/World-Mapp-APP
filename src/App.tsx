@@ -18,6 +18,7 @@ import { useFriends } from './hooks/useFriends';
 import { useFriendData } from './hooks/useFriendData';
 import { useProfile } from './hooks/useProfile';
 import type { GeoJsonFeature, CityPoint } from './types';
+import { isUNMember } from './data/un-members';
 
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
@@ -240,11 +241,14 @@ export default function App() {
   }, []);
 
   // --- Derive selected place info ---
-  const selectedPlaceType: 'country' | 'state' | 'city' = selectedCity
+  // Non-state polygons are classified as 'country' (UN member) or 'territory'
+  const selectedPlaceType: 'country' | 'territory' | 'state' | 'city' = selectedCity
     ? 'city'
     : selectedFeature?._isState
       ? 'state'
-      : 'country';
+      : selectedFeature
+        ? isUNMember(selectedFeature.properties.NAME as string) ? 'country' : 'territory'
+        : 'country';
   const selectedPlaceId = selectedCity
     ? selectedCity.id
     : selectedFeature

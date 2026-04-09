@@ -62,11 +62,15 @@ export function useFriendData() {
     setVersion((v) => v + 1);
   }, []);
 
-  // Get a friend's data for a specific place
+  // Get a friend's data for a specific place — checks both 'country' and
+  // 'territory' types so older data stored under the wrong type still matches
   const getFriendPlace = useCallback(
     (placeType: string, placeId: string): VisitedPlace | undefined => {
+      const typesToCheck = (placeType === 'country' || placeType === 'territory')
+        ? ['country', 'territory']
+        : [placeType];
       return friendPlaces.find(
-        (p) => p.place_type === placeType && p.place_id === placeId,
+        (p) => typesToCheck.includes(p.place_type) && p.place_id === placeId,
       );
     },
     [friendPlaces],

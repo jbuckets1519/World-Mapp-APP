@@ -65,13 +65,12 @@ const LAKE_CAP = 'rgba(0, 3, 13, 1)';
 const LAKE_SIDE = 'rgba(0, 3, 13, 1)';
 
 // --- Altitudes ---
-// Lakes sit just above the globe surface so they punch through country fills
-// and look like continuous water. State/country polygons render above them.
-const LAKE_ALT = 0.006;
 const COUNTRY_ALT = 0.005;
-const COUNTRY_SELECTED_ALT = 0.035;
-const VISITED_ALT = 0.008;
 const STATE_ALT = 0.006;
+const VISITED_ALT = 0.008;
+// Lakes render well above country/state fills so they fully obscure borders beneath
+const LAKE_ALT = 0.01;
+const COUNTRY_SELECTED_ALT = 0.035;
 const STATE_SELECTED_ALT = 0.037;
 
 export function getPolygonId(f: GeoJsonFeature): string {

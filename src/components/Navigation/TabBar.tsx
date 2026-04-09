@@ -83,7 +83,7 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
   );
 }
 
-const TAB_BAR_HEIGHT = 44;
+const TAB_BAR_HEIGHT = 38;
 
 // Export so other components can account for the tab bar height
 export { TAB_BAR_HEIGHT };

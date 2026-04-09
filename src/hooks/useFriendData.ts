@@ -40,8 +40,7 @@ export function useFriendData() {
       setFriendVisitedIds(new Set());
     } else {
       const places = (data ?? []) as VisitedPlace[];
-      // Only highlight places that are actively visited on the globe
-      const ids = new Set(places.filter((p) => p.is_visited !== false).map((p) => p.place_id));
+      const ids = new Set(places.map((p) => p.place_id));
       setFriendPlaces(places);
       setFriendVisitedIds(ids);
       console.log('[FriendData] loaded', places.length, 'places for friend', friendId);

@@ -48,7 +48,6 @@ export default function App() {
     markVisited,
     removeVisited,
     updateNotes,
-    updateDates,
     getPlace,
   } = useTravelData(user?.id ?? null);
 
@@ -316,13 +315,6 @@ export default function App() {
     [updateNotes, selectedPlaceType, selectedPlaceId],
   );
 
-  const handleUpdateDates = useCallback(
-    async (dates: { startDate: string | null; endDate: string | null }): Promise<boolean> => {
-      return updateDates(selectedPlaceType, selectedPlaceId, dates);
-    },
-    [updateDates, selectedPlaceType, selectedPlaceId],
-  );
-
   if (globeError) {
     return (
       <div style={{ color: '#ff6b6b', padding: '2rem', textAlign: 'center' }}>
@@ -442,7 +434,6 @@ export default function App() {
             onMarkVisited={async () => false}
             onRemoveVisited={() => {}}
             onNotesChange={async () => false}
-            onUpdateDates={async () => false}
             onClose={handleClose}
             photoCount={panelPhotos.length}
             onOpenGallery={() => setShowGallery(true)}
@@ -459,7 +450,6 @@ export default function App() {
             onMarkVisited={handleMarkVisited}
             onRemoveVisited={handleRemoveVisited}
             onNotesChange={handleNotesChange}
-            onUpdateDates={handleUpdateDates}
             onClose={handleClose}
             photoCount={panelPhotos.length}
             onOpenGallery={() => setShowGallery(true)}

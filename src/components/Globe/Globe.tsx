@@ -39,7 +39,7 @@ const COUNTRY_SELECTED_SIDE = 'rgba(100, 180, 255, 0.35)';
 // --- State colors — cap matches countries so USA looks the same ---
 const STATE_CAP = 'rgba(100, 180, 255, 0.15)';
 const STATE_SIDE = 'rgba(100, 180, 255, 0.05)';
-const STATE_STROKE = 'rgba(255, 230, 130, 0.15)';
+const STATE_STROKE = 'rgb(255, 230, 130)';
 const STATE_SELECTED_CAP = 'rgba(255, 230, 130, 0.25)';
 const STATE_SELECTED_SIDE = 'rgba(255, 230, 130, 0.1)';
 

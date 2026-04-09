@@ -10,7 +10,6 @@ import { SearchBar } from './components/SearchBar';
 import { FriendOverlay } from './components/Friends';
 import { BucketlistPanel } from './components/Bucketlist';
 import { AuthOverlay, UserIndicator, ProfileView, ProfileSetup } from './components/Auth';
-import PerfMonitor from './components/PerfMonitor';
 import { TabBar, TAB_BAR_HEIGHT } from './components/Navigation';
 import type { TabId } from './components/Navigation';
 import { ProfileTab } from './components/ProfileTab';
@@ -447,7 +446,6 @@ export default function App() {
           onRemoveFromBucketlist={user ? (id) => { removeBucketlistItem(id); } : undefined}
         />
         <ZoomIndicator level={zoomLevel} />
-        <PerfMonitor polygonCount={polygons.length} cityCount={visibleCities.length} />
 
         {/* "Back to My Map" banner when viewing a friend's map */}
         {isFriendView && activeFriendName && (

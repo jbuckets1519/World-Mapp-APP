@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { BucketlistItem } from '../../hooks/useBucketlist';
+import { BUCKETLIST_MAX } from '../../hooks/useBucketlist';
 
 interface BucketlistPanelProps {
   items: BucketlistItem[];
@@ -60,9 +61,16 @@ export default function BucketlistPanel({
       {isOpen && (
         <div style={styles.panel}>
           <div style={styles.header}>
-            <h3 style={styles.title}>Bucketlist</h3>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
+              <h3 style={styles.title}>Bucketlist</h3>
+              <span style={styles.count}>{items.length}/{BUCKETLIST_MAX}</span>
+            </div>
             <button style={styles.closeBtn} onClick={() => setIsOpen(false)}>✕</button>
           </div>
+
+          {items.length >= BUCKETLIST_MAX && (
+            <div style={styles.fullMsg}>Bucketlist is full ({BUCKETLIST_MAX}/{BUCKETLIST_MAX})</div>
+          )}
 
           {/* Globe overlay toggle */}
           <div style={styles.toggleRow}>
@@ -169,6 +177,21 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.95rem',
     fontWeight: 600,
     color: `${ACCENT} 0.9)`,
+  },
+  count: {
+    fontSize: '0.72rem',
+    color: 'rgba(255, 255, 255, 0.35)',
+    fontWeight: 400,
+  },
+  fullMsg: {
+    fontSize: '0.75rem',
+    color: `${ACCENT} 0.8)`,
+    textAlign: 'center',
+    padding: '0.4rem',
+    marginBottom: '0.5rem',
+    background: `${ACCENT} 0.06)`,
+    borderRadius: '6px',
+    border: `1px solid ${ACCENT} 0.15)`,
   },
   closeBtn: {
     background: 'none',

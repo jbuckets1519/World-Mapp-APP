@@ -181,19 +181,22 @@ export default function CountryPanel({
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
-          <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <h2 style={styles.name}>{displayName}</h2>
             {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
           </div>
           {isLoggedIn && onAddToBucketlist && (
             <button
-              style={styles.pailBtn}
+              style={{
+                ...styles.pailBtn,
+                ...(isInBucketlist ? styles.pailBtnActive : {}),
+              }}
               onClick={isInBucketlist ? onRemoveFromBucketlist : onAddToBucketlist}
               title={isInBucketlist ? 'Remove from bucketlist' : 'Add to bucketlist'}
             >
-              <PailIcon size={16} filled={isInBucketlist}
-                color={isInBucketlist ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 100, 100, 0.3)'} />
+              <PailIcon size={21} filled={isInBucketlist}
+                color={isInBucketlist ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 100, 100, 0.55)'} />
             </button>
           )}
         </div>
@@ -376,8 +379,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: 'inherit',
   },
   pailBtn: {
-    background: 'none', border: 'none', cursor: 'pointer', padding: '0.15rem',
-    display: 'flex', alignItems: 'center', flexShrink: 0,
+    width: '34px', height: '34px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(15, 15, 25, 0.7)',
+    border: '1px solid rgba(255, 100, 100, 0.25)',
+    borderRadius: '8px',
+    cursor: 'pointer', flexShrink: 0, padding: 0,
+  },
+  pailBtnActive: {
+    background: 'rgba(255, 100, 100, 0.1)',
+    borderColor: 'rgba(255, 100, 100, 0.4)',
   },
   loginHint: { color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.8rem', textAlign: 'center', margin: 0 },
   // --- Date section ---

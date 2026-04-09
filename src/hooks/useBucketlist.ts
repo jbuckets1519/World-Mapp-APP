@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+export const BUCKETLIST_MAX = 10;
+
 export interface BucketlistItem {
   id: string;
   place_type: string;
@@ -48,6 +50,7 @@ export function useBucketlist(userId: string | null) {
   const addItem = useCallback(
     async (placeType: string, placeId: string, placeName: string): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) return false;
+      if (items.length >= BUCKETLIST_MAX) return false;
       const { data, error } = await supabase
         .from('bucketlist')
         .insert({ user_id: userId, place_type: placeType, place_id: placeId, place_name: placeName })
@@ -60,7 +63,7 @@ export function useBucketlist(userId: string | null) {
       setItems((prev) => [data as BucketlistItem, ...prev]);
       return true;
     },
-    [userId],
+    [userId, items.length],
   );
 
   const removeItem = useCallback(
@@ -86,10 +89,13 @@ export function useBucketlist(userId: string | null) {
     [bucketlistIds],
   );
 
+  const isFull = items.length >= BUCKETLIST_MAX;
+
   return {
     items,
     bucketlistIds,
     loading,
+    isFull,
     addItem,
     removeItem,
     isInBucketlist,

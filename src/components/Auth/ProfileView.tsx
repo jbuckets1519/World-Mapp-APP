@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import type { ProfileData } from '../../hooks/useProfile';
 import type { VisitedPlace } from '../../hooks/useTravelData';
 import TravelStats from './TravelStats';
+import { Achievements } from '../Achievements';
+import { isUNMember } from '../../data/un-members';
+import { COUNTRY_TO_CONTINENT } from '../../data/continents';
+import type { Continent } from '../../data/continents';
 
 interface ProfileViewProps {
   userId: string;
@@ -88,6 +92,23 @@ export default function ProfileView({
     setActionLoading(false);
   };
 
+  // Compute country and continent counts for achievements from friend's visited places
+  const { achievementCountries, achievementContinents } = useMemo(() => {
+    const active = places.filter((p) => p.is_visited !== false);
+    const polygons = active.filter((p) => p.place_type === 'country' || p.place_type === 'territory');
+    let countryCount = 0;
+    const visitedContinents = new Set<Continent>();
+    for (const p of polygons) {
+      const name = p.place_id.replace(/^(country|territory):/, '');
+      if (isUNMember(name)) {
+        countryCount++;
+        const continent = COUNTRY_TO_CONTINENT[name];
+        if (continent) visitedContinents.add(continent);
+      }
+    }
+    return { achievementCountries: countryCount, achievementContinents: visitedContinents.size };
+  }, [places]);
+
   const displayName = profile?.username || profile?.email || 'User';
   const initial = (profile?.username || profile?.email || '?')[0].toUpperCase();
 
@@ -142,6 +163,9 @@ export default function ProfileView({
 
             {/* Travel stats — visible to friends */}
             <TravelStats places={places} photoCount={photoCount} />
+
+            {/* Achievements — read-only view of friend's badge progress */}
+            <Achievements countryCount={achievementCountries} continentCount={achievementContinents} />
           </>
         )}
       </div>

@@ -293,14 +293,14 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     zIndex: 20,
   },
-  // Expanded container — same top-left position
+  // Expanded container — same top-left position, z-index above city dot HTML elements
   container: {
     position: 'fixed',
     top: 'calc(3.2rem + env(safe-area-inset-top, 0px))',
     left: '1rem',
     width: '300px',
     maxWidth: 'calc(100vw - 2rem)',
-    zIndex: 20,
+    zIndex: 1000,
   },
   inputRow: {
     display: 'flex',

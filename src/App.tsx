@@ -154,16 +154,22 @@ export default function App() {
     return lakes.length > 0 ? [...countries, ...lakes] : countries;
   }, [countries, lakes]);
 
-  // At state zoom, exclude countries that have subdivision data (USA, Canada, Mexico)
-  // to prevent z-fighting between the coarse country polygon and the detailed state
-  // polygons at nearly the same altitude — this causes dark patches inside states.
+  // At state zoom, countries with subdivision data (USA, Canada) are re-added as
+  // "border-only" features — transparent fill, no altitude, stroke only. This keeps
+  // bold country borders visible without z-fighting against the state polygons.
   // Lakes fill the water gaps (Great Lakes, etc.) between state shorelines.
   const withStates = useMemo(() => {
     if (countries.length === 0) return [];
-    const otherCountries = countries.filter(
-      (f) => !COUNTRIES_WITH_SUBDIVISIONS.has(f.properties.NAME as string),
-    );
-    const base = lakes.length > 0 ? [...otherCountries, ...lakes] : otherCountries;
+    const otherCountries: GeoJsonFeature[] = [];
+    const borderOnly: GeoJsonFeature[] = [];
+    for (const f of countries) {
+      if (COUNTRIES_WITH_SUBDIVISIONS.has(f.properties.NAME as string)) {
+        borderOnly.push({ ...f, _borderOnly: true });
+      } else {
+        otherCountries.push(f);
+      }
+    }
+    const base = [...otherCountries, ...borderOnly, ...(lakes.length > 0 ? lakes : [])];
     return subdivisions.length > 0 ? [...base, ...subdivisions] : base;
   }, [countries, subdivisions, lakes]);
 

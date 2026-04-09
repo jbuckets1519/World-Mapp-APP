@@ -16,6 +16,8 @@ export interface GeoJsonFeature {
   _isState?: boolean;
   /** Marker for lake polygons — purely visual, non-interactive */
   _isLake?: boolean;
+  /** Marker for border-only rendering — transparent fill, stroke only */
+  _borderOnly?: boolean;
 }
 
 export interface GeoJsonData {

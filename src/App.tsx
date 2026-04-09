@@ -9,7 +9,7 @@ import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
 import { FriendOverlay } from './components/Friends';
 import { BucketlistPanel } from './components/Bucketlist';
-import { AuthOverlay, UserIndicator, ProfileView, ProfileSetup } from './components/Auth';
+import { AuthOverlay, ProfileView, ProfileSetup } from './components/Auth';
 import { TabBar, TAB_BAR_HEIGHT } from './components/Navigation';
 import type { TabId } from './components/Navigation';
 import { ProfileTab } from './components/ProfileTab';
@@ -460,12 +460,6 @@ export default function App() {
 
         {user && (
           <>
-            <UserIndicator
-              email={user.email ?? ''}
-              profile={profile}
-              onSignOut={signOut}
-              onEditProfile={() => setActiveTab('profile')}
-            />
             <BucketlistPanel
               items={bucketlistItems}
               loading={bucketlistLoading}

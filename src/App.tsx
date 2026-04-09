@@ -167,8 +167,7 @@ export default function App() {
   }, [zoomLevel]);
 
   const visibleCities = useMemo(() => {
-    // Capitals are always visible regardless of zoom level
-    return allCities.filter((c) => c.isCapital || c.scaleRank <= maxScaleRank);
+    return allCities.filter((c) => c.scaleRank <= maxScaleRank);
   }, [allCities, maxScaleRank]);
 
   const countriesOnly = useMemo(() => {

@@ -227,18 +227,35 @@ export function useGlobeConfig() {
           }
         }
 
-        // Keep top 300 cities by population, plus every capital city
+        // Keep top 300 cities by population
         const all = [...seen.values()];
         all.sort((a, b) => b.population - a.population);
-        const top300 = new Set(all.slice(0, 300).map((c) => c.id));
-        // Add any capital not already in the top 300
-        const filtered = all.filter((c) => top300.has(c.id) || c.isCapital);
-        // Re-sort by scaleRank for tiering
-        filtered.sort((a, b) => a.scaleRank - b.scaleRank);
+        const top300 = all.slice(0, 300);
 
-        const capitalCount = filtered.filter((c) => c.isCapital && !top300.has(c.id)).length;
-        console.log(`[GlobeConfig] loaded ${filtered.length} cities (top 300 + ${capitalCount} extra capitals) from Natural Earth 10m`);
-        setCities(filtered);
+        // Find countries that already have at least one city in the top 300
+        const countriesWithCity = new Set(top300.map((c) => c.country));
+
+        // For countries with no city in the top 300, add only their capital
+        const top300Ids = new Set(top300.map((c) => c.id));
+        const addedCapitals: string[] = [];
+        for (const city of all) {
+          if (top300Ids.has(city.id)) continue;
+          if (!city.isCapital) continue;
+          if (countriesWithCity.has(city.country)) continue;
+          // This capital's country has no city — add it
+          top300.push(city);
+          countriesWithCity.add(city.country);
+          addedCapitals.push(`${city.name} (${city.country})`);
+        }
+
+        // Re-sort by scaleRank for tiering
+        top300.sort((a, b) => a.scaleRank - b.scaleRank);
+
+        console.log(`[GlobeConfig] loaded ${top300.length} cities (300 + ${addedCapitals.length} missing-country capitals)`);
+        if (addedCapitals.length > 0) {
+          console.log('[GlobeConfig] added capitals:', addedCapitals.join(', '));
+        }
+        setCities(top300);
       })
       .catch((err) => {
         console.error('[GlobeConfig] cities load ERROR:', err.message);

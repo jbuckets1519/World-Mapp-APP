@@ -1,9 +1,13 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { ProfileData } from '../../hooks/useProfile';
 import type { VisitedPlace } from '../../hooks/useTravelData';
 import type { UserProfile, FollowRelation } from '../../types';
 import TravelStats from '../Auth/TravelStats';
+import { Achievements } from '../Achievements';
 import { TAB_BAR_HEIGHT } from '../Navigation';
+import { isUNMember } from '../../data/un-members';
+import { COUNTRY_TO_CONTINENT } from '../../data/continents';
+import type { Continent } from '../../data/continents';
 
 const MAX_BIO_WORDS = 50;
 
@@ -131,6 +135,23 @@ export default function ProfileTab({
   const displayName = profile.username || profile.display_name || profile.email || '?';
   const initial = (profile.username || profile.email || '?')[0].toUpperCase();
 
+  // Compute country and continent counts for achievements
+  const { achievementCountries, achievementContinents } = useMemo(() => {
+    const active = places.filter((p) => p.is_visited !== false);
+    const polygons = active.filter((p) => p.place_type === 'country' || p.place_type === 'territory');
+    let countryCount = 0;
+    const visitedContinents = new Set<Continent>();
+    for (const p of polygons) {
+      const name = p.place_id.replace(/^(country|territory):/, '');
+      if (isUNMember(name)) {
+        countryCount++;
+        const continent = COUNTRY_TO_CONTINENT[name];
+        if (continent) visitedContinents.add(continent);
+      }
+    }
+    return { achievementCountries: countryCount, achievementContinents: visitedContinents.size };
+  }, [places]);
+
   return (
     <div style={styles.container}>
       <div style={styles.scrollArea}>
@@ -241,6 +262,9 @@ export default function ProfileTab({
 
         {/* ---- Travel Stats ---- */}
         <TravelStats places={places} photoCount={totalPhotoCount} />
+
+        {/* ---- Achievements ---- */}
+        <Achievements countryCount={achievementCountries} continentCount={achievementContinents} />
 
         {/* ---- Friends Section ---- */}
         <div style={styles.friendsSection}>

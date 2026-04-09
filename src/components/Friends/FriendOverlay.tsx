@@ -7,6 +7,9 @@ interface FriendOverlayProps {
   loadingPlaces: boolean;
   onSelectFriend: (friendId: string) => void;
   onClear: () => void;
+  friendName?: string | null;
+  showFriendBucketlist?: boolean;
+  onToggleFriendBucketlist?: () => void;
 }
 
 /**
@@ -19,8 +22,12 @@ export default function FriendOverlay({
   loadingPlaces,
   onSelectFriend,
   onClear,
+  friendName,
+  showFriendBucketlist = false,
+  onToggleFriendBucketlist,
 }: FriendOverlayProps) {
   const [open, setOpen] = useState(false);
+  const [optionsExpanded, setOptionsExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,6 +80,45 @@ export default function FriendOverlay({
           'View friend\u2019s map'
         )}
       </button>
+
+      {/* Expandable options section when viewing a friend's map */}
+      {activeFriendId && !open && (
+        <div style={styles.optionsRow}>
+          <button
+            style={styles.expandBtn}
+            onClick={() => setOptionsExpanded((v) => !v)}
+          >
+            <span style={{
+              ...styles.arrow,
+              transform: optionsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}>&#9660;</span>
+            Options
+          </button>
+          {optionsExpanded && (
+            <div style={styles.optionsPanel}>
+              <label style={styles.toggleLabel}>
+                <span style={styles.toggleText}>
+                  Show {friendName ? `${friendName}'s ` : ''}Bucketlist
+                </span>
+                <button
+                  style={{
+                    ...styles.toggleSwitch,
+                    background: showFriendBucketlist
+                      ? 'rgba(255, 100, 100, 0.4)'
+                      : 'rgba(255, 255, 255, 0.1)',
+                  }}
+                  onClick={onToggleFriendBucketlist}
+                >
+                  <span style={{
+                    ...styles.toggleKnob,
+                    transform: showFriendBucketlist ? 'translateX(14px)' : 'translateX(0)',
+                  }} />
+                </button>
+              </label>
+            </div>
+          )}
+        </div>
+      )}
 
       {open && (
         <div style={styles.dropdown}>
@@ -189,5 +235,65 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(180, 130, 255, 0.8)',
     fontSize: '0.85rem',
     flexShrink: 0,
+  },
+  optionsRow: {
+    marginTop: '4px',
+  },
+  expandBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.3rem',
+    padding: '0.25rem 0.55rem',
+    background: 'rgba(15, 15, 25, 0.6)',
+    border: '1px solid rgba(180, 130, 255, 0.15)',
+    borderRadius: '6px',
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: '0.65rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  arrow: {
+    fontSize: '0.5rem',
+    transition: 'transform 0.2s ease',
+    display: 'inline-block',
+  },
+  optionsPanel: {
+    marginTop: '4px',
+    padding: '0.4rem 0.6rem',
+    background: 'rgba(15, 15, 25, 0.9)',
+    backdropFilter: 'blur(12px)',
+    border: '1px solid rgba(180, 130, 255, 0.2)',
+    borderRadius: '8px',
+  },
+  toggleLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '0.5rem',
+    cursor: 'pointer',
+  },
+  toggleText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: '0.72rem',
+  },
+  toggleSwitch: {
+    position: 'relative' as const,
+    width: '30px',
+    height: '16px',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    padding: 0,
+    transition: 'background 0.2s ease',
+  },
+  toggleKnob: {
+    position: 'absolute' as const,
+    top: '2px',
+    left: '2px',
+    width: '12px',
+    height: '12px',
+    borderRadius: '50%',
+    background: '#fff',
+    transition: 'transform 0.2s ease',
   },
 };

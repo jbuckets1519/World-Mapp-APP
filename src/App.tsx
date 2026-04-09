@@ -85,6 +85,7 @@ export default function App() {
 
   const {
     friendVisitedIds,
+    friendBucketlistIds,
     activeFriendId,
     version: friendVersion,
     loadingPlaces: friendLoadingPlaces,
@@ -106,6 +107,7 @@ export default function App() {
   } = useBucketlist(user?.id ?? null);
 
   const [showBucketlistOverlay, setShowBucketlistOverlay] = useState(false);
+  const [showFriendBucketlist, setShowFriendBucketlist] = useState(false);
   // Version counter to trigger globe re-render when bucketlist changes
   const bucketlistVersion = bucketlistItems.length;
 
@@ -201,6 +203,7 @@ export default function App() {
     setSelectedFeature(null);
     setSelectedCity(null);
     setShowGallery(false);
+    setShowFriendBucketlist(false);
   }, [activeFriendId]);
 
   const handlePolygonClick = useCallback(
@@ -380,8 +383,16 @@ export default function App() {
         onCityClick={handleCityClick}
         onZoomChange={handleZoomChange}
         onGlobeClick={handleClose}
-        bucketlistIds={showBucketlistOverlay && !isFriendView ? bucketlistIds : undefined}
-        bucketlistVersion={showBucketlistOverlay ? bucketlistVersion : 0}
+        bucketlistIds={
+          isFriendView
+            ? (showFriendBucketlist ? friendBucketlistIds : undefined)
+            : (showBucketlistOverlay ? bucketlistIds : undefined)
+        }
+        bucketlistVersion={
+          isFriendView
+            ? (showFriendBucketlist ? friendVersion : 0)
+            : (showBucketlistOverlay ? bucketlistVersion : 0)
+        }
       />
       <SearchBar
         cities={allCities}
@@ -453,6 +464,9 @@ export default function App() {
               loadingPlaces={friendLoadingPlaces}
               onSelectFriend={loadFriendPlaces}
               onClear={clearFriend}
+              friendName={activeFriendName}
+              showFriendBucketlist={showFriendBucketlist}
+              onToggleFriendBucketlist={() => setShowFriendBucketlist((v) => !v)}
             />
           )}
         </>

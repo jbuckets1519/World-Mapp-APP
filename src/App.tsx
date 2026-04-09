@@ -149,29 +149,30 @@ export default function App() {
     return allCities.filter((c) => c.scaleRank <= maxScaleRank);
   }, [allCities, maxScaleRank]);
 
+  // Border-only duplicates of every country — transparent fill, stroke only, at a
+  // dedicated altitude above all fills. This prevents z-fighting between adjacent
+  // countries' strokes and keeps borders consistently solid at every zoom level.
+  const countryBorders = useMemo(() => {
+    return countries.map((f) => ({ ...f, _borderOnly: true }));
+  }, [countries]);
+
   const countriesOnly = useMemo(() => {
     if (countries.length === 0) return [];
-    return lakes.length > 0 ? [...countries, ...lakes] : countries;
-  }, [countries, lakes]);
+    const base = lakes.length > 0 ? [...countries, ...lakes] : countries;
+    return [...base, ...countryBorders];
+  }, [countries, lakes, countryBorders]);
 
-  // At state zoom, countries with subdivision data (USA, Canada) are re-added as
-  // "border-only" features — transparent fill, no altitude, stroke only. This keeps
-  // bold country borders visible without z-fighting against the state polygons.
-  // Lakes fill the water gaps (Great Lakes, etc.) between state shorelines.
+  // At state zoom, exclude USA/Canada fills (z-fighting with states) but keep their
+  // border-only versions. Lakes fill water gaps between state shorelines.
   const withStates = useMemo(() => {
     if (countries.length === 0) return [];
-    const otherCountries: GeoJsonFeature[] = [];
-    const borderOnly: GeoJsonFeature[] = [];
-    for (const f of countries) {
-      if (COUNTRIES_WITH_SUBDIVISIONS.has(f.properties.NAME as string)) {
-        borderOnly.push({ ...f, _borderOnly: true });
-      } else {
-        otherCountries.push(f);
-      }
-    }
-    const base = [...otherCountries, ...borderOnly, ...(lakes.length > 0 ? lakes : [])];
-    return subdivisions.length > 0 ? [...base, ...subdivisions] : base;
-  }, [countries, subdivisions, lakes]);
+    const otherCountries = countries.filter(
+      (f) => !COUNTRIES_WITH_SUBDIVISIONS.has(f.properties.NAME as string),
+    );
+    const base = lakes.length > 0 ? [...otherCountries, ...lakes] : otherCountries;
+    const withSubs = subdivisions.length > 0 ? [...base, ...subdivisions] : base;
+    return [...withSubs, ...countryBorders];
+  }, [countries, subdivisions, lakes, countryBorders]);
 
   const polygons = showStates ? withStates : countriesOnly;
 

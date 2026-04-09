@@ -166,16 +166,23 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getStrokeColor = useCallback((feat: object) => {
     const f = feat as GeoJsonFeature;
     if (f._isLake) return 'rgba(0, 0, 0, 0)';
-    const id = getPolygonId(f);
-    if (visitedRef.current?.has(id)) return isPurple ? PURPLE_VISITED_STROKE : VISITED_STROKE;
-    return f._isState ? STATE_STROKE : COUNTRY_STROKE;
+    // Border-only layer handles all country strokes at a higher altitude;
+    // fill-layer countries get transparent stroke to avoid double-rendering.
+    if (f._borderOnly) {
+      const id = getPolygonId(f);
+      if (visitedRef.current?.has(id)) return isPurple ? PURPLE_VISITED_STROKE : VISITED_STROKE;
+      return COUNTRY_STROKE;
+    }
+    if (f._isState) return STATE_STROKE;
+    // Regular country fills — stroke handled by border-only layer
+    return 'rgba(0, 0, 0, 0)';
   }, [visitedVersion, isPurple]);
 
   const getAltitude = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
-      // Border-only features sit just above states so their stroke draws on top
-      if (f._borderOnly) return STATE_ALT + 0.001;
+      // Border-only features sit above all fills so strokes don't z-fight with caps
+      if (f._borderOnly) return 0.012;
       if (f._isLake) return LAKE_ALT;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_ALT : COUNTRY_SELECTED_ALT;
@@ -268,7 +275,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       polygonStrokeColor={getStrokeColor}
       polygonLabel={getLabel}
       polygonAltitude={getAltitude}
-      polygonsTransitionDuration={300}
+      polygonsTransitionDuration={0}
       onPolygonClick={handleClick}
       pointsData={cities}
       pointLat="lat"

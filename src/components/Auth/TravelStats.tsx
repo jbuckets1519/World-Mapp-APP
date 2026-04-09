@@ -18,13 +18,12 @@ interface TravelStatsProps {
  */
 export default function TravelStats({ places, photoCount }: TravelStatsProps) {
   const stats = useMemo(() => {
-    // Only count places actively marked as visited
-    const active = places.filter((p) => p.is_visited !== false);
-    const polygonPlaces = active.filter(
+    // Polygons that aren't states or cities — could be 'country' or 'territory'
+    const polygonPlaces = places.filter(
       (p) => p.place_type === 'country' || p.place_type === 'territory',
     );
-    const states = active.filter((p) => p.place_type === 'state');
-    const cities = active.filter((p) => p.place_type === 'city');
+    const states = places.filter((p) => p.place_type === 'state');
+    const cities = places.filter((p) => p.place_type === 'city');
 
     // Split polygons into UN countries vs territories using the authoritative list
     const countries: VisitedPlace[] = [];

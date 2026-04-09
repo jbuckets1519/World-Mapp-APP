@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const BUCKET = 'travel-photos';
@@ -33,6 +33,31 @@ export function useTravelPhotos(userId: string | null) {
   const [photos, setPhotos] = useState<TravelPhoto[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Total photo count across all places (for stats display)
+  const [totalPhotoCount, setTotalPhotoCount] = useState(0);
+
+  // Fetch total photo count on mount and after uploads/deletes
+  const loadTotalPhotoCount = useCallback(async () => {
+    if (!userId || !isSupabaseConfigured) {
+      setTotalPhotoCount(0);
+      return;
+    }
+    const { count, error } = await supabase
+      .from('travel_photos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('[TravelPhotos] count ERROR:', error.message);
+    } else {
+      setTotalPhotoCount(count ?? 0);
+    }
+  }, [userId]);
+
+  // Load total count when user changes
+  useEffect(() => {
+    loadTotalPhotoCount();
+  }, [loadTotalPhotoCount]);
 
   /**
    * Load all photos for a specific place from the travel_photos table,
@@ -148,6 +173,7 @@ export function useTravelPhotos(userId: string | null) {
 
       console.log('[TravelPhotos] upload OK:', newPhoto.id);
       setPhotos((prev) => [...prev, newPhoto]);
+      setTotalPhotoCount((c) => c + 1);
       setUploading(false);
       return true;
     },
@@ -187,6 +213,7 @@ export function useTravelPhotos(userId: string | null) {
 
       console.log('[TravelPhotos] delete OK');
       setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+      setTotalPhotoCount((c) => Math.max(0, c - 1));
       return true;
     },
     [userId],
@@ -196,6 +223,7 @@ export function useTravelPhotos(userId: string | null) {
     photos,
     loading,
     uploading,
+    totalPhotoCount,
     loadPhotos,
     uploadPhoto,
     deletePhoto,

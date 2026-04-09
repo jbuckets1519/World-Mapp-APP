@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import type { ProfileData } from '../../hooks/useProfile';
+import type { VisitedPlace } from '../../hooks/useTravelData';
+import TravelStats from './TravelStats';
 
 interface ProfileViewProps {
   userId: string;
@@ -26,24 +28,54 @@ export default function ProfileView({
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [places, setPlaces] = useState<VisitedPlace[]>([]);
+  const [photoCount, setPhotoCount] = useState(0);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     setLoading(true);
 
-    supabase
+    // Load profile, visited places, and photo count in parallel
+    const loadProfile = supabase
       .from('profiles')
       .select('id, username, display_name, email, avatar_url, bio, is_public')
       .eq('id', userId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('[ProfileView] load ERROR:', error.message);
-        } else if (data) {
-          setProfile(data as ProfileData);
+      .maybeSingle();
+
+    const loadPlaces = supabase
+      .from('visited_places')
+      .select('*')
+      .eq('user_id', userId)
+      .order('visited_at', { ascending: false });
+
+    const loadPhotoCount = supabase
+      .from('travel_photos')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    Promise.all([loadProfile, loadPlaces, loadPhotoCount]).then(
+      ([profileRes, placesRes, photoRes]) => {
+        if (profileRes.error) {
+          console.error('[ProfileView] profile load ERROR:', profileRes.error.message);
+        } else if (profileRes.data) {
+          setProfile(profileRes.data as ProfileData);
         }
+
+        if (placesRes.error) {
+          console.error('[ProfileView] places load ERROR:', placesRes.error.message);
+        } else {
+          setPlaces((placesRes.data ?? []) as VisitedPlace[]);
+        }
+
+        if (photoRes.error) {
+          console.error('[ProfileView] photo count ERROR:', photoRes.error.message);
+        } else {
+          setPhotoCount(photoRes.count ?? 0);
+        }
+
         setLoading(false);
-      });
+      },
+    );
   }, [userId]);
 
   const handleFollowToggle = async () => {
@@ -107,6 +139,9 @@ export default function ProfileView({
                   ? 'Following'
                   : 'Follow'}
             </button>
+
+            {/* Travel stats — visible to friends */}
+            <TravelStats places={places} photoCount={photoCount} />
           </>
         )}
       </div>
@@ -125,8 +160,10 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 30,
   },
   card: {
-    width: '320px',
+    width: '340px',
     maxWidth: 'calc(100vw - 2rem)',
+    maxHeight: 'calc(100vh - 4rem)',
+    overflowY: 'auto' as const,
     background: 'rgba(15, 15, 25, 0.97)',
     backdropFilter: 'blur(12px)',
     border: '1px solid rgba(100, 180, 255, 0.15)',

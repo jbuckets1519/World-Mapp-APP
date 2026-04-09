@@ -41,6 +41,7 @@ export default function App() {
   const { countries, subdivisions, lakes, cities: allCities, loading: globeLoading, error: globeError } = useGlobeConfig();
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
   const {
+    places,
     visitedIds,
     version: visitedVersion,
     markVisited,
@@ -53,6 +54,7 @@ export default function App() {
     photos,
     loading: photosLoading,
     uploading: photosUploading,
+    totalPhotoCount,
     loadPhotos,
     uploadPhoto,
     deletePhoto,
@@ -463,6 +465,8 @@ export default function App() {
         <ProfileEditor
           profile={profile}
           saving={profileSaving}
+          places={places}
+          totalPhotoCount={totalPhotoCount}
           onSave={updateProfile}
           onUploadAvatar={uploadAvatar}
           onClose={() => setShowProfileEditor(false)}

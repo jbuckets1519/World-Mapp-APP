@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ProfileData } from '../../hooks/useProfile';
+import type { VisitedPlace } from '../../hooks/useTravelData';
+import TravelStats from './TravelStats';
 
 const MAX_BIO_WORDS = 50;
 
 interface ProfileEditorProps {
   profile: ProfileData;
   saving: boolean;
+  places: VisitedPlace[];
+  totalPhotoCount: number;
   onSave: (updates: { username?: string; bio?: string }) => Promise<boolean>;
   onUploadAvatar: (file: File) => Promise<boolean>;
   onClose: () => void;
@@ -18,6 +22,8 @@ function countWords(text: string): number {
 export default function ProfileEditor({
   profile,
   saving,
+  places,
+  totalPhotoCount,
   onSave,
   onUploadAvatar,
   onClose,
@@ -150,6 +156,9 @@ export default function ProfileEditor({
                 ? 'Failed — try again'
                 : 'Save Profile'}
         </button>
+
+        {/* Travel stats dashboard */}
+        <TravelStats places={places} photoCount={totalPhotoCount} />
       </div>
     </div>
   );

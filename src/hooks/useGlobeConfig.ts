@@ -227,14 +227,17 @@ export function useGlobeConfig() {
           }
         }
 
-        // Keep top 300 cities by population
+        // Keep top 300 cities by population, plus every capital city
         const all = [...seen.values()];
         all.sort((a, b) => b.population - a.population);
-        const filtered = all.slice(0, 300);
+        const top300 = new Set(all.slice(0, 300).map((c) => c.id));
+        // Add any capital not already in the top 300
+        const filtered = all.filter((c) => top300.has(c.id) || c.isCapital);
         // Re-sort by scaleRank for tiering
         filtered.sort((a, b) => a.scaleRank - b.scaleRank);
 
-        console.log(`[GlobeConfig] loaded ${filtered.length} cities (top 300 by population) from Natural Earth 10m`);
+        const capitalCount = filtered.filter((c) => c.isCapital && !top300.has(c.id)).length;
+        console.log(`[GlobeConfig] loaded ${filtered.length} cities (top 300 + ${capitalCount} extra capitals) from Natural Earth 10m`);
         setCities(filtered);
       })
       .catch((err) => {

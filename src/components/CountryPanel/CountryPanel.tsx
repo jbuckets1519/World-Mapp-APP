@@ -77,7 +77,7 @@ export default function CountryPanel({
   const displayName = city ? city.name : country?.properties.NAME ?? '';
   const subtitle = city ? city.country : null;
 
-  const isVisited = Boolean(visitedData);
+  const isVisited = Boolean(visitedData?.is_visited);
   const [notes, setNotes] = useState(visitedData?.notes ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const notesRef = useRef(notes);
@@ -189,9 +189,11 @@ export default function CountryPanel({
     setSaveStatus('saving');
 
     let ok: boolean;
-    if (isVisited) {
+    if (visitedData) {
+      // Row exists (visited or not) — update notes on existing row
       ok = await onNotesChange(currentNotes);
     } else {
+      // No row yet — create one
       ok = await onMarkVisited(currentNotes);
     }
 

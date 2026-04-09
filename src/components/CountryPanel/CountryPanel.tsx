@@ -12,6 +12,7 @@ interface CountryPanelProps {
   onMarkVisited: (notes: string, dates?: VisitDates) => Promise<boolean>;
   onRemoveVisited: () => void;
   onNotesChange: (notes: string) => Promise<boolean>;
+  onUpdateDates: (dates: VisitDates) => Promise<boolean>;
   onClose: () => void;
   photoCount: number;
   onOpenGallery: () => void;
@@ -50,6 +51,13 @@ function formatVisitDates(start: string | null, end: string | null): string | nu
   return formatDate(start ?? end!);
 }
 
+/** Detect whether stored dates are month-only (day=01 for both) or range */
+function detectDateMode(start: string | null, end: string | null): 'month' | 'range' {
+  if (!start && !end) return 'month';
+  if (start && end && start === end && start.endsWith('-01')) return 'month';
+  return 'range';
+}
+
 export default function CountryPanel({
   country,
   city,
@@ -58,6 +66,7 @@ export default function CountryPanel({
   onMarkVisited,
   onRemoveVisited,
   onNotesChange,
+  onUpdateDates,
   onClose,
   photoCount,
   onOpenGallery,
@@ -74,7 +83,7 @@ export default function CountryPanel({
   const notesRef = useRef(notes);
   notesRef.current = notes;
 
-  // Date selector state
+  // Date selector state — for the "Mark as visited" flow
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState<'month' | 'range'>('month');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -82,10 +91,37 @@ export default function CountryPanel({
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
 
+  // Edit date picker state — for already-visited places
+  const [showEditDates, setShowEditDates] = useState(false);
+  const [editDateMode, setEditDateMode] = useState<'month' | 'range'>('month');
+  const [editMonth, setEditMonth] = useState(new Date().getMonth());
+  const [editYear, setEditYear] = useState(CURRENT_YEAR);
+  const [editRangeStart, setEditRangeStart] = useState('');
+  const [editRangeEnd, setEditRangeEnd] = useState('');
+  const [dateSaveStatus, setDateSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   useEffect(() => {
     setNotes(visitedData?.notes ?? '');
     setSaveStatus('idle');
     setShowDatePicker(false);
+    setShowEditDates(false);
+    setDateSaveStatus('idle');
+
+    // Pre-populate edit date fields from existing data
+    const start = visitedData?.visit_start_date ?? null;
+    const end = visitedData?.visit_end_date ?? null;
+    const mode = detectDateMode(start, end);
+    setEditDateMode(mode);
+    if (mode === 'month' && start) {
+      const [y, m] = start.split('-').map(Number);
+      setEditMonth(m - 1);
+      setEditYear(y);
+    } else {
+      setEditMonth(new Date().getMonth());
+      setEditYear(CURRENT_YEAR);
+    }
+    setEditRangeStart(mode === 'range' && start ? start : '');
+    setEditRangeEnd(mode === 'range' && end ? end : '');
   }, [visitedData, displayName]);
 
   /** User clicks "Mark as visited" — show the date picker inline */
@@ -126,6 +162,22 @@ export default function CountryPanel({
     if (ok) {
       setShowDatePicker(false);
     }
+  };
+
+  /** Save edited dates on an already-visited place */
+  const handleSaveEditDates = async () => {
+    setDateSaveStatus('saving');
+    let dates: VisitDates;
+    if (editDateMode === 'month') {
+      const mm = String(editMonth + 1).padStart(2, '0');
+      const date = `${editYear}-${mm}-01`;
+      dates = { startDate: date, endDate: date };
+    } else {
+      dates = { startDate: editRangeStart || null, endDate: editRangeEnd || null };
+    }
+    const ok = await onUpdateDates(dates);
+    setDateSaveStatus(ok ? 'saved' : 'error');
+    setTimeout(() => setDateSaveStatus('idle'), 1500);
   };
 
   const handleRemoveVisited = () => {
@@ -320,9 +372,107 @@ export default function CountryPanel({
             </div>
           )}
 
-          {/* Show visit dates below the visited button */}
-          {isVisited && visitDateDisplay && !showDatePicker && (
-            <div style={styles.dateDisplay}>{visitDateDisplay}</div>
+          {/* Show visit dates / edit dates for visited places */}
+          {isVisited && !showDatePicker && !showEditDates && (
+            <div
+              style={{ ...styles.dateDisplay, cursor: 'pointer' }}
+              onClick={() => setShowEditDates(true)}
+            >
+              {visitDateDisplay ?? 'Add visit dates'}
+              <span style={{ float: 'right', opacity: 0.5, fontSize: '0.7rem' }}>edit</span>
+            </div>
+          )}
+
+          {/* Inline date editor for already-visited places */}
+          {isVisited && showEditDates && !showDatePicker && (
+            <div style={styles.datePicker}>
+              <div style={styles.datePickerHeader}>Edit visit dates</div>
+
+              <div style={styles.modeToggle}>
+                <button
+                  style={{
+                    ...styles.modeBtn,
+                    ...(editDateMode === 'month' ? styles.modeBtnActive : {}),
+                  }}
+                  onClick={() => setEditDateMode('month')}
+                >
+                  Month / Year
+                </button>
+                <button
+                  style={{
+                    ...styles.modeBtn,
+                    ...(editDateMode === 'range' ? styles.modeBtnActive : {}),
+                  }}
+                  onClick={() => setEditDateMode('range')}
+                >
+                  Date Range
+                </button>
+              </div>
+
+              {editDateMode === 'month' ? (
+                <div style={styles.monthYearRow}>
+                  <select
+                    style={styles.select}
+                    value={editMonth}
+                    onChange={(e) => setEditMonth(Number(e.target.value))}
+                  >
+                    {MONTHS.map((m, i) => (
+                      <option key={m} value={i}>{m}</option>
+                    ))}
+                  </select>
+                  <select
+                    style={styles.select}
+                    value={editYear}
+                    onChange={(e) => setEditYear(Number(e.target.value))}
+                  >
+                    {YEAR_OPTIONS.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div style={styles.rangeRow}>
+                  <label style={styles.rangeLabel}>
+                    <span style={styles.rangeLabelText}>From</span>
+                    <input
+                      type="date"
+                      style={styles.dateInput}
+                      value={editRangeStart}
+                      onChange={(e) => setEditRangeStart(e.target.value)}
+                    />
+                  </label>
+                  <label style={styles.rangeLabel}>
+                    <span style={styles.rangeLabelText}>To</span>
+                    <input
+                      type="date"
+                      style={styles.dateInput}
+                      value={editRangeEnd}
+                      onChange={(e) => setEditRangeEnd(e.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
+
+              <div style={styles.dateActions}>
+                <button
+                  style={{
+                    ...styles.confirmBtn,
+                    ...(dateSaveStatus === 'saved' ? styles.saveBtnSaved : {}),
+                    ...(dateSaveStatus === 'error' ? styles.saveBtnError : {}),
+                  }}
+                  onClick={handleSaveEditDates}
+                  disabled={dateSaveStatus === 'saving'}
+                >
+                  {dateSaveStatus === 'saving' ? 'Saving...'
+                    : dateSaveStatus === 'saved' ? 'Saved!'
+                      : dateSaveStatus === 'error' ? 'Failed'
+                        : 'Save Dates'}
+                </button>
+                <button style={styles.skipBtn} onClick={() => setShowEditDates(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
 
           <textarea

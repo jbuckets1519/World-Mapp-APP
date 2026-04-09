@@ -241,7 +241,39 @@ export function useTravelData(userId: string | null) {
     [userId],
   );
 
-  // Get a specific place's data
+  // Update visit dates on an existing row.
+  const updateDates = useCallback(
+    async (placeType: string, placeId: string, dates: VisitDates): Promise<boolean> => {
+      if (!userId || !isSupabaseConfigured) return false;
+      const isPolygon = placeType === 'country' || placeType === 'territory';
+      let query = supabase
+        .from('visited_places')
+        .update({ visit_start_date: dates.startDate, visit_end_date: dates.endDate })
+        .eq('user_id', userId)
+        .eq('place_id', placeId);
+      query = isPolygon
+        ? query.in('place_type', ['country', 'territory'])
+        : query.eq('place_type', placeType);
+
+      const { data, error } = await query.select();
+      if (error) {
+        console.error('[TravelData] updateDates ERROR:', error.message);
+        return false;
+      }
+      if (!data || data.length === 0) return false;
+      const typesToCheck = isPolygon ? ['country', 'territory'] : [placeType];
+      setPlaces((prev) =>
+        prev.map((p) =>
+          typesToCheck.includes(p.place_type) && p.place_id === placeId
+            ? { ...p, visit_start_date: dates.startDate, visit_end_date: dates.endDate }
+            : p,
+        ),
+      );
+      return true;
+    },
+    [userId],
+  );
+
   // Look up a place — for country/territory, check both types to handle
   // older data that stored territories as 'country'
   const getPlace = useCallback(
@@ -266,6 +298,7 @@ export function useTravelData(userId: string | null) {
     markVisited,
     removeVisited,
     updateNotes,
+    updateDates,
     getPlace,
   };
 }

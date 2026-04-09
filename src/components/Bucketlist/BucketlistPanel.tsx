@@ -121,8 +121,8 @@ const ACCENT = 'rgba(255, 100, 100,';
 const styles: Record<string, React.CSSProperties> = {
   iconBtn: {
     position: 'fixed',
-    top: '3.8rem',
-    right: '1rem',
+    top: '3.2rem',
+    left: '1rem',
     width: '34px',
     height: '34px',
     display: 'flex',
@@ -154,7 +154,7 @@ const styles: Record<string, React.CSSProperties> = {
   panel: {
     position: 'fixed',
     top: '5.8rem',
-    right: '1rem',
+    left: '1rem',
     width: '260px',
     maxHeight: 'calc(100vh - 7rem)',
     background: 'rgba(15, 15, 25, 0.95)',

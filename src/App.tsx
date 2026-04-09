@@ -490,7 +490,6 @@ export default function App() {
                 loadingPlaces={friendLoadingPlaces}
                 onSelectFriend={loadFriendPlaces}
                 onClear={clearFriend}
-                friendName={activeFriendName}
                 showFriendBucketlist={showFriendBucketlist}
                 onToggleFriendBucketlist={() => setShowFriendBucketlist((v) => !v)}
               />

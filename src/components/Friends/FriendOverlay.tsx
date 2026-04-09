@@ -7,7 +7,6 @@ interface FriendOverlayProps {
   loadingPlaces: boolean;
   onSelectFriend: (friendId: string) => void;
   onClear: () => void;
-  friendName?: string | null;
   showFriendBucketlist?: boolean;
   onToggleFriendBucketlist?: () => void;
 }
@@ -22,7 +21,6 @@ export default function FriendOverlay({
   loadingPlaces,
   onSelectFriend,
   onClear,
-  friendName,
   showFriendBucketlist = false,
   onToggleFriendBucketlist,
 }: FriendOverlayProps) {

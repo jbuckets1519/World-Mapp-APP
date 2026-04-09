@@ -235,8 +235,16 @@ export default function App() {
     setShowFriendBucketlist(false);
   }, [activeFriendId]);
 
+  // Guard: when a city dot is clicked, react-globe.gl also fires onPolygonClick
+  // for the polygon underneath. This ref lets handlePolygonClick ignore that second event.
+  const cityClickedRef = useRef(false);
+
   const handlePolygonClick = useCallback(
     (polygon: GeoJsonFeature) => {
+      if (cityClickedRef.current) {
+        cityClickedRef.current = false;
+        return;
+      }
       const id = getPolygonId(polygon);
       if (id === selectedId) {
         setSelectedId(null);
@@ -252,6 +260,7 @@ export default function App() {
 
   const handleCityClick = useCallback(
     (city: CityPoint) => {
+      cityClickedRef.current = true;
       if (city.id === selectedId) {
         setSelectedId(null);
         setSelectedCity(null);

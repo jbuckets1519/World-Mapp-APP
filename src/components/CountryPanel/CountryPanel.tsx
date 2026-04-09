@@ -12,6 +12,7 @@ interface CountryPanelProps {
   onMarkVisited: (notes: string, dates?: VisitDates) => Promise<boolean>;
   onRemoveVisited: () => void;
   onNotesChange: (notes: string) => Promise<boolean>;
+  onUpdateDates: (dates: VisitDates) => Promise<boolean>;
   onClose: () => void;
   photoCount: number;
   onOpenGallery: () => void;
@@ -26,13 +27,11 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const CURRENT_YEAR = new Date().getFullYear();
-// Allow dates going back 100 years
 const YEAR_OPTIONS = Array.from({ length: 101 }, (_, i) => CURRENT_YEAR - i);
 
 /** Format a YYYY-MM-DD date string for display */
 function formatDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
-  // Month-only dates have day = 01
   const month = MONTHS[m - 1] ?? '';
   if (d === 1) return `${month} ${y}`;
   return `${month} ${d}, ${y}`;
@@ -42,12 +41,18 @@ function formatDate(dateStr: string): string {
 function formatVisitDates(start: string | null, end: string | null): string | null {
   if (!start && !end) return null;
   if (start && end) {
-    // If both are first-of-month, treat as month/year display
     const sameMonth = start === end;
     if (sameMonth) return formatDate(start);
     return `${formatDate(start)} — ${formatDate(end)}`;
   }
   return formatDate(start ?? end!);
+}
+
+/** Detect whether stored dates are month-only (day=01 for both) or range */
+function detectDateMode(start: string | null, end: string | null): 'month' | 'range' {
+  if (!start && !end) return 'month';
+  if (start && end && start === end && start.endsWith('-01')) return 'month';
+  return 'range';
 }
 
 export default function CountryPanel({
@@ -58,74 +63,105 @@ export default function CountryPanel({
   onMarkVisited,
   onRemoveVisited,
   onNotesChange,
+  onUpdateDates,
   onClose,
   photoCount,
   onOpenGallery,
   friendViewMode = false,
   friendName,
 }: CountryPanelProps) {
-  // Derive display name from whichever selection is active
   const displayName = city ? city.name : country?.properties.NAME ?? '';
   const subtitle = city ? city.country : null;
 
-  const isVisited = Boolean(visitedData);
+  // A row exists in the DB (may or may not be is_visited=true)
+  const hasData = Boolean(visitedData);
+  // Whether the place is highlighted on the globe
+  const isVisited = Boolean(visitedData?.is_visited);
+
   const [notes, setNotes] = useState(visitedData?.notes ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const notesRef = useRef(notes);
   notesRef.current = notes;
 
-  // Date selector state
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  // Date selector state — for the initial "mark as visited" flow
+  const [showNewDatePicker, setShowNewDatePicker] = useState(false);
+
+  // Inline date editor state — for editing dates on existing places
   const [dateMode, setDateMode] = useState<'month' | 'range'>('month');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
+  const [dateSaveStatus, setDateSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
+  // Sync form state when selection changes or data updates
   useEffect(() => {
     setNotes(visitedData?.notes ?? '');
     setSaveStatus('idle');
-    setShowDatePicker(false);
+    setShowNewDatePicker(false);
+    setDateSaveStatus('idle');
+
+    // Pre-populate date fields from existing data
+    const start = visitedData?.visit_start_date ?? null;
+    const end = visitedData?.visit_end_date ?? null;
+    const mode = detectDateMode(start, end);
+    setDateMode(mode);
+
+    if (mode === 'month' && start) {
+      const [y, m] = start.split('-').map(Number);
+      setSelectedMonth(m - 1);
+      setSelectedYear(y);
+    } else {
+      setSelectedMonth(new Date().getMonth());
+      setSelectedYear(CURRENT_YEAR);
+    }
+
+    setRangeStart(mode === 'range' && start ? start : '');
+    setRangeEnd(mode === 'range' && end ? end : '');
   }, [visitedData, displayName]);
 
-  /** User clicks "Mark as visited" — show the date picker inline */
-  const handleMarkVisitedClick = () => {
-    setShowDatePicker(true);
-  };
-
   /** Build VisitDates from the current picker state */
-  const buildDates = (): VisitDates | undefined => {
+  const buildDates = (): VisitDates => {
     if (dateMode === 'month') {
-      // Month/year → first day of that month
       const mm = String(selectedMonth + 1).padStart(2, '0');
       const date = `${selectedYear}-${mm}-01`;
       return { startDate: date, endDate: date };
     }
-    // Range mode
-    if (rangeStart || rangeEnd) {
-      return {
-        startDate: rangeStart || null,
-        endDate: rangeEnd || null,
-      };
-    }
-    return undefined;
+    return {
+      startDate: rangeStart || null,
+      endDate: rangeEnd || null,
+    };
   };
 
-  /** Confirm the date selection and save */
-  const handleConfirmDate = async () => {
+  // --- Handlers for the "first time marking visited" flow ---
+  const handleMarkVisitedClick = () => {
+    if (hasData) {
+      // Row exists (was soft-deleted) — just re-activate, data is preserved
+      onMarkVisited(visitedData!.notes);
+    } else {
+      // No row yet — show date picker before first save
+      setShowNewDatePicker(true);
+    }
+  };
+
+  const handleConfirmNewDate = async () => {
     const dates = buildDates();
     const ok = await onMarkVisited(notesRef.current, dates);
-    if (ok) {
-      setShowDatePicker(false);
-    }
+    if (ok) setShowNewDatePicker(false);
   };
 
-  /** Skip date selection — save with no dates */
-  const handleSkipDate = async () => {
+  const handleSkipNewDate = async () => {
     const ok = await onMarkVisited(notesRef.current);
-    if (ok) {
-      setShowDatePicker(false);
-    }
+    if (ok) setShowNewDatePicker(false);
+  };
+
+  // --- Handler for saving dates on already-existing places ---
+  const handleSaveDates = async () => {
+    setDateSaveStatus('saving');
+    const dates = buildDates();
+    const ok = await onUpdateDates(dates);
+    setDateSaveStatus(ok ? 'saved' : 'error');
+    setTimeout(() => setDateSaveStatus('idle'), 1500);
   };
 
   const handleRemoveVisited = () => {
@@ -137,7 +173,7 @@ export default function CountryPanel({
     setSaveStatus('saving');
 
     let ok: boolean;
-    if (isVisited) {
+    if (hasData) {
       ok = await onNotesChange(currentNotes);
     } else {
       ok = await onMarkVisited(currentNotes);
@@ -152,12 +188,7 @@ export default function CountryPanel({
     }
   };
 
-  // Formatted date display for visited places
-  const visitDateDisplay = visitedData
-    ? formatVisitDates(visitedData.visit_start_date, visitedData.visit_end_date)
-    : null;
-
-  // --- Friend view mode: read-only panel showing their data ---
+  // --- Friend view mode: read-only ---
   if (friendViewMode) {
     const friendDateDisplay = visitedData
       ? formatVisitDates(visitedData.visit_start_date, visitedData.visit_end_date)
@@ -175,7 +206,6 @@ export default function CountryPanel({
           </button>
         </div>
 
-        {/* Friend attribution */}
         <div style={styles.friendBadge}>
           <span style={styles.friendDot} />
           {friendName}'s map
@@ -207,7 +237,7 @@ export default function CountryPanel({
     );
   }
 
-  // --- Own map mode: editable panel ---
+  // --- Own map mode ---
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
@@ -222,8 +252,8 @@ export default function CountryPanel({
 
       {isLoggedIn ? (
         <>
-          {/* Mark as visited / Visited button */}
-          {!showDatePicker && (
+          {/* Visited toggle — always visible unless the new-place date picker is open */}
+          {!showNewDatePicker && (
             <button
               style={{
                 ...styles.visitedBtn,
@@ -235,94 +265,68 @@ export default function CountryPanel({
             </button>
           )}
 
-          {/* Inline date selector — appears after clicking "Mark as visited" */}
-          {showDatePicker && (
+          {/* Date picker for first-time visits (no existing row) */}
+          {showNewDatePicker && (
             <div style={styles.datePicker}>
               <div style={styles.datePickerHeader}>When did you visit?</div>
-
-              {/* Mode toggle */}
-              <div style={styles.modeToggle}>
-                <button
-                  style={{
-                    ...styles.modeBtn,
-                    ...(dateMode === 'month' ? styles.modeBtnActive : {}),
-                  }}
-                  onClick={() => setDateMode('month')}
-                >
-                  Month / Year
-                </button>
-                <button
-                  style={{
-                    ...styles.modeBtn,
-                    ...(dateMode === 'range' ? styles.modeBtnActive : {}),
-                  }}
-                  onClick={() => setDateMode('range')}
-                >
-                  Date Range
-                </button>
-              </div>
-
-              {dateMode === 'month' ? (
-                // Month + Year dropdowns
-                <div style={styles.monthYearRow}>
-                  <select
-                    style={styles.select}
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  >
-                    {MONTHS.map((m, i) => (
-                      <option key={m} value={i}>{m}</option>
-                    ))}
-                  </select>
-                  <select
-                    style={styles.select}
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  >
-                    {YEAR_OPTIONS.map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                // Start / End date inputs
-                <div style={styles.rangeRow}>
-                  <label style={styles.rangeLabel}>
-                    <span style={styles.rangeLabelText}>From</span>
-                    <input
-                      type="date"
-                      style={styles.dateInput}
-                      value={rangeStart}
-                      onChange={(e) => setRangeStart(e.target.value)}
-                    />
-                  </label>
-                  <label style={styles.rangeLabel}>
-                    <span style={styles.rangeLabelText}>To</span>
-                    <input
-                      type="date"
-                      style={styles.dateInput}
-                      value={rangeEnd}
-                      onChange={(e) => setRangeEnd(e.target.value)}
-                    />
-                  </label>
-                </div>
-              )}
-
-              {/* Confirm / Skip buttons */}
+              <DatePickerFields
+                dateMode={dateMode}
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                rangeStart={rangeStart}
+                rangeEnd={rangeEnd}
+                onDateModeChange={setDateMode}
+                onMonthChange={setSelectedMonth}
+                onYearChange={setSelectedYear}
+                onRangeStartChange={setRangeStart}
+                onRangeEndChange={setRangeEnd}
+              />
               <div style={styles.dateActions}>
-                <button style={styles.confirmBtn} onClick={handleConfirmDate}>
+                <button style={styles.confirmBtn} onClick={handleConfirmNewDate}>
                   Save with date
                 </button>
-                <button style={styles.skipBtn} onClick={handleSkipDate}>
+                <button style={styles.skipBtn} onClick={handleSkipNewDate}>
                   Skip — no date
                 </button>
               </div>
             </div>
           )}
 
-          {/* Show visit dates below the visited button */}
-          {isVisited && visitDateDisplay && !showDatePicker && (
-            <div style={styles.dateDisplay}>{visitDateDisplay}</div>
+          {/* Inline date editor — visible for any place that has a DB row */}
+          {hasData && !showNewDatePicker && (
+            <div style={styles.datePicker}>
+              <div style={styles.datePickerHeader}>Visit dates</div>
+              <DatePickerFields
+                dateMode={dateMode}
+                selectedMonth={selectedMonth}
+                selectedYear={selectedYear}
+                rangeStart={rangeStart}
+                rangeEnd={rangeEnd}
+                onDateModeChange={setDateMode}
+                onMonthChange={setSelectedMonth}
+                onYearChange={setSelectedYear}
+                onRangeStartChange={setRangeStart}
+                onRangeEndChange={setRangeEnd}
+              />
+              <button
+                style={{
+                  ...styles.confirmBtn,
+                  width: '100%',
+                  ...(dateSaveStatus === 'saved' ? styles.saveBtnSaved : {}),
+                  ...(dateSaveStatus === 'error' ? styles.saveBtnError : {}),
+                }}
+                onClick={handleSaveDates}
+                disabled={dateSaveStatus === 'saving'}
+              >
+                {dateSaveStatus === 'saving'
+                  ? 'Saving...'
+                  : dateSaveStatus === 'saved'
+                    ? 'Saved!'
+                    : dateSaveStatus === 'error'
+                      ? 'Failed'
+                      : 'Save Dates'}
+              </button>
+            </div>
           )}
 
           <textarea
@@ -358,6 +362,103 @@ export default function CountryPanel({
         <p style={styles.loginHint}>Log in to save visited places and notes</p>
       )}
     </div>
+  );
+}
+
+// --- Reusable date picker fields (shared by new-visit and edit flows) ---
+
+interface DatePickerFieldsProps {
+  dateMode: 'month' | 'range';
+  selectedMonth: number;
+  selectedYear: number;
+  rangeStart: string;
+  rangeEnd: string;
+  onDateModeChange: (mode: 'month' | 'range') => void;
+  onMonthChange: (month: number) => void;
+  onYearChange: (year: number) => void;
+  onRangeStartChange: (val: string) => void;
+  onRangeEndChange: (val: string) => void;
+}
+
+function DatePickerFields({
+  dateMode,
+  selectedMonth,
+  selectedYear,
+  rangeStart,
+  rangeEnd,
+  onDateModeChange,
+  onMonthChange,
+  onYearChange,
+  onRangeStartChange,
+  onRangeEndChange,
+}: DatePickerFieldsProps) {
+  return (
+    <>
+      <div style={styles.modeToggle}>
+        <button
+          style={{
+            ...styles.modeBtn,
+            ...(dateMode === 'month' ? styles.modeBtnActive : {}),
+          }}
+          onClick={() => onDateModeChange('month')}
+        >
+          Month / Year
+        </button>
+        <button
+          style={{
+            ...styles.modeBtn,
+            ...(dateMode === 'range' ? styles.modeBtnActive : {}),
+          }}
+          onClick={() => onDateModeChange('range')}
+        >
+          Date Range
+        </button>
+      </div>
+
+      {dateMode === 'month' ? (
+        <div style={styles.monthYearRow}>
+          <select
+            style={styles.select}
+            value={selectedMonth}
+            onChange={(e) => onMonthChange(Number(e.target.value))}
+          >
+            {MONTHS.map((m, i) => (
+              <option key={m} value={i}>{m}</option>
+            ))}
+          </select>
+          <select
+            style={styles.select}
+            value={selectedYear}
+            onChange={(e) => onYearChange(Number(e.target.value))}
+          >
+            {YEAR_OPTIONS.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div style={styles.rangeRow}>
+          <label style={styles.rangeLabel}>
+            <span style={styles.rangeLabelText}>From</span>
+            <input
+              type="date"
+              style={styles.dateInput}
+              value={rangeStart}
+              onChange={(e) => onRangeStartChange(e.target.value)}
+            />
+          </label>
+          <label style={styles.rangeLabel}>
+            <span style={styles.rangeLabelText}>To</span>
+            <input
+              type="date"
+              style={styles.dateInput}
+              value={rangeEnd}
+              onChange={(e) => onRangeEndChange(e.target.value)}
+            />
+          </label>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -404,7 +505,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '6px',
     lineHeight: 1,
   },
-  // --- Own map styles ---
   visitedBtn: {
     width: '100%',
     padding: '0.6rem',
@@ -476,7 +576,7 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     margin: 0,
   },
-  // --- Date picker styles ---
+  // --- Date picker ---
   datePicker: {
     marginBottom: '0.75rem',
     padding: '0.85rem',
@@ -594,7 +694,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(100, 180, 255, 0.7)',
     fontSize: '0.78rem',
   },
-  // --- Friend view mode styles ---
+  // --- Friend view ---
   friendBadge: {
     display: 'flex',
     alignItems: 'center',

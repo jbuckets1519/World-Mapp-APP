@@ -226,13 +226,9 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     (pt: object) => {
       const city = pt as CityPoint;
       const z = zoomRef.current;
-      // Smooth continuous scaling across zoom range:
-      //   z=0  → 0.03  (tiny pinpoints)
-      //   z=40 → 0.07  (small but visible)
-      //   z=70 → 0.13  (moderate)
-      //   z=90 → 0.19  (clearly visible)
-      //   z=100→ 0.22  (max)
-      const t = z / 100;
+      // Smooth scaling up to zoom 70, then capped to prevent giant dots
+      const capped = Math.min(z, 70);
+      const t = capped / 100;
       const base = 0.03 + t * t * 0.19;
       // More important cities (lower scaleRank) are slightly larger
       const rankBonus = Math.max(0, (5 - city.scaleRank) * 0.01);
@@ -262,8 +258,8 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getCityAltitude = useCallback(
     (pt: object) => {
       const city = pt as CityPoint;
-      // Lift selected city slightly above polygons
-      return city.id === selectedId ? 0.04 : 0.01;
+      // Flat on surface; only lift selected city slightly
+      return city.id === selectedId ? 0.02 : 0;
     },
     [selectedId],
   );

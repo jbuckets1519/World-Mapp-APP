@@ -83,7 +83,7 @@ function Badge({ tier, palette, size, locked }: {
   const lr = locked ? '#1e2030' : palette.lr;
   const la = locked ? '#222430' : palette.la;
 
-  let content: JSX.Element;
+  let content: React.ReactNode;
 
   if (tier === 0) {
     content = (

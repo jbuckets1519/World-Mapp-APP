@@ -259,7 +259,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     (pt: object) => {
       const city = pt as CityPoint;
       // Above polygons so city clicks register; selected lifts a bit more
-      return city.id === selectedId ? 0.005 : 0.001;
+      return city.id === selectedId ? 0.04 : 0.011;
     },
     [selectedId],
   );

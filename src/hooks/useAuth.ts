@@ -6,6 +6,8 @@ interface AuthState {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /** True when the user arrives via a password recovery link */
+  isPasswordRecovery: boolean;
 }
 
 export function useAuth() {
@@ -13,22 +15,35 @@ export function useAuth() {
     user: null,
     session: null,
     loading: true,
+    isPasswordRecovery: false,
   });
 
   useEffect(() => {
     // Get the current session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setState({ user: session?.user ?? null, session, loading: false });
+      setState((s) => ({ ...s, user: session?.user ?? null, session, loading: false }));
     });
 
     // Listen for auth state changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setState({ user: session?.user ?? null, session, loading: false });
+      (event, session) => {
+        setState((s) => ({
+          ...s,
+          user: session?.user ?? null,
+          session,
+          loading: false,
+          // Flag recovery so the app can show the new-password form
+          isPasswordRecovery: event === 'PASSWORD_RECOVERY' ? true : s.isPasswordRecovery,
+        }));
       },
     );
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  /** Call after the user has successfully set a new password */
+  const clearPasswordRecovery = useCallback(() => {
+    setState((s) => ({ ...s, isPasswordRecovery: false }));
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
@@ -50,8 +65,10 @@ export function useAuth() {
     user: state.user,
     session: state.session,
     loading: state.loading,
+    isPasswordRecovery: state.isPasswordRecovery,
     signUp,
     signIn,
     signOut,
+    clearPasswordRecovery,
   };
 }

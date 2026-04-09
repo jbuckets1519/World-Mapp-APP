@@ -9,7 +9,7 @@ import { ZoomIndicator } from './components/ZoomIndicator';
 import { SearchBar } from './components/SearchBar';
 import { FriendOverlay } from './components/Friends';
 import { BucketlistPanel } from './components/Bucketlist';
-import { AuthOverlay, ProfileView, ProfileSetup } from './components/Auth';
+import { AuthOverlay, ProfileView, ProfileSetup, PasswordReset } from './components/Auth';
 import { TabBar, TAB_BAR_HEIGHT } from './components/Navigation';
 import type { TabId } from './components/Navigation';
 import { ProfileTab } from './components/ProfileTab';
@@ -68,7 +68,7 @@ function distanceToZoomLevel(distance: number): number {
 
 export default function App() {
   const { countries, subdivisions, lakes, cities: allCities, loading: globeLoading, error: globeError } = useGlobeConfig();
-  const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
+  const { user, loading: authLoading, isPasswordRecovery, signIn, signUp, signOut, clearPasswordRecovery } = useAuth();
   const {
     places,
     visitedIds,
@@ -560,6 +560,11 @@ export default function App() {
           isFollowing={isFollowing}
           onViewProfile={setViewingProfileId}
         />
+      )}
+
+      {/* Password recovery overlay — shown when arriving from a reset link */}
+      {isPasswordRecovery && (
+        <PasswordReset onComplete={clearPasswordRecovery} />
       )}
 
       {/* Auth overlay — always visible regardless of tab */}

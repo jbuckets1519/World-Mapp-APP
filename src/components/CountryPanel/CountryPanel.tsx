@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import type { VisitedPlace, VisitDates } from '../../hooks/useTravelData';
 import CalendarPicker, { formatDateDisplay } from './CalendarPicker';
+import { PailIcon } from '../Bucketlist';
 
 interface CountryPanelProps {
   country: GeoJsonFeature | null;
@@ -180,9 +181,21 @@ export default function CountryPanel({
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
-        <div>
-          <h2 style={styles.name}>{displayName}</h2>
-          {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <h2 style={styles.name}>{displayName}</h2>
+            {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
+          </div>
+          {isLoggedIn && onAddToBucketlist && (
+            <button
+              style={styles.pailBtn}
+              onClick={isInBucketlist ? onRemoveFromBucketlist : onAddToBucketlist}
+              title={isInBucketlist ? 'Remove from bucketlist' : 'Add to bucketlist'}
+            >
+              <PailIcon size={16} filled={isInBucketlist}
+                color={isInBucketlist ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 100, 100, 0.3)'} />
+            </button>
+          )}
         </div>
         <button style={styles.closeBtn} onClick={onClose} aria-label="Close panel">✕</button>
       </div>
@@ -199,19 +212,6 @@ export default function CountryPanel({
               onClick={isVisited ? onRemoveVisited : handleMarkVisitedClick}
             >
               {isVisited ? '✓ Visited' : 'Mark as visited'}
-            </button>
-          )}
-
-          {/* Bucketlist toggle */}
-          {!showNewDatePicker && !friendViewMode && onAddToBucketlist && (
-            <button
-              style={{
-                ...styles.bucketlistBtn,
-                ...(isInBucketlist ? styles.bucketlistBtnActive : {}),
-              }}
-              onClick={isInBucketlist ? onRemoveFromBucketlist : onAddToBucketlist}
-            >
-              {isInBucketlist ? '★ In Bucketlist' : '☆ Add to Bucketlist'}
             </button>
           )}
 
@@ -375,17 +375,9 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(100, 180, 255, 0.7)', fontSize: '0.85rem', cursor: 'pointer',
     fontFamily: 'inherit',
   },
-  bucketlistBtn: {
-    width: '100%', padding: '0.5rem', marginBottom: '0.75rem',
-    background: 'rgba(255, 255, 255, 0.04)',
-    border: '1px solid rgba(255, 220, 100, 0.15)', borderRadius: '8px',
-    color: 'rgba(255, 220, 100, 0.6)', fontSize: '0.82rem', cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-  bucketlistBtnActive: {
-    background: 'rgba(255, 220, 100, 0.1)',
-    borderColor: 'rgba(255, 220, 100, 0.3)',
-    color: 'rgba(255, 220, 100, 0.9)',
+  pailBtn: {
+    background: 'none', border: 'none', cursor: 'pointer', padding: '0.15rem',
+    display: 'flex', alignItems: 'center', flexShrink: 0,
   },
   loginHint: { color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.8rem', textAlign: 'center', margin: 0 },
   // --- Date section ---

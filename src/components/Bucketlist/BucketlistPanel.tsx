@@ -9,6 +9,23 @@ interface BucketlistPanelProps {
   onRemove: (placeId: string) => Promise<boolean>;
 }
 
+/** Pail/bucket SVG icon — used consistently across the app */
+export function PailIcon({ size = 16, filled = false, color = 'rgba(255, 100, 100, 0.8)' }: {
+  size?: number; filled?: boolean; color?: string;
+}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : 'none'}
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Handle */}
+      <path d="M7 8C7 4.5 10 2 12 2s5 2.5 5 6" fill="none" />
+      {/* Rim */}
+      <rect x="4" y="8" width="16" height="3" rx="1" />
+      {/* Body — tapered bucket shape */}
+      <path d="M5 11l1.5 10h11L19 11" />
+    </svg>
+  );
+}
+
 export default function BucketlistPanel({
   items,
   loading,
@@ -27,17 +44,13 @@ export default function BucketlistPanel({
 
   return (
     <>
-      {/* Bucket icon button */}
+      {/* Pail icon button */}
       <button
         style={styles.iconBtn}
         onClick={() => setIsOpen((o) => !o)}
         aria-label="Bucketlist"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="rgba(255, 220, 100, 0.8)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 6h16M4 6l1 14h14l1-14M9 6V4h6v2" />
-          <path d="M10 10v6M14 10v6" />
-        </svg>
+        <PailIcon size={16} />
         {items.length > 0 && (
           <span style={styles.badge}>{items.length}</span>
         )}
@@ -95,10 +108,12 @@ export default function BucketlistPanel({
   );
 }
 
+const ACCENT = 'rgba(255, 100, 100,';
+
 const styles: Record<string, React.CSSProperties> = {
   iconBtn: {
     position: 'fixed',
-    top: '3.5rem',
+    top: '3.8rem',
     right: '1rem',
     width: '34px',
     height: '34px',
@@ -106,7 +121,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     background: 'rgba(15, 15, 25, 0.7)',
-    border: '1px solid rgba(255, 220, 100, 0.2)',
+    border: `1px solid ${ACCENT} 0.2)`,
     borderRadius: '8px',
     cursor: 'pointer',
     zIndex: 10,
@@ -119,8 +134,8 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: '16px',
     height: '16px',
     borderRadius: '8px',
-    background: 'rgba(255, 220, 100, 0.85)',
-    color: '#111',
+    background: `${ACCENT} 0.85)`,
+    color: '#fff',
     fontSize: '0.6rem',
     fontWeight: 700,
     display: 'flex',
@@ -130,13 +145,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
   panel: {
     position: 'fixed',
-    top: '5.5rem',
+    top: '5.8rem',
     right: '1rem',
     width: '260px',
     maxHeight: 'calc(100vh - 7rem)',
     background: 'rgba(15, 15, 25, 0.95)',
     backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 220, 100, 0.2)',
+    border: `1px solid ${ACCENT} 0.2)`,
     borderRadius: '12px',
     padding: '1rem',
     zIndex: 15,
@@ -153,7 +168,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     fontSize: '0.95rem',
     fontWeight: 600,
-    color: 'rgba(255, 220, 100, 0.9)',
+    color: `${ACCENT} 0.9)`,
   },
   closeBtn: {
     background: 'none',
@@ -188,8 +203,8 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'background 0.2s',
   },
   toggleBtnOn: {
-    background: 'rgba(255, 220, 100, 0.25)',
-    borderColor: 'rgba(255, 220, 100, 0.4)',
+    background: `${ACCENT} 0.25)`,
+    borderColor: `${ACCENT} 0.4)`,
   },
   toggleKnob: {
     position: 'absolute',
@@ -203,7 +218,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   toggleKnobOn: {
     left: '18px',
-    background: 'rgba(255, 220, 100, 0.9)',
+    background: `${ACCENT} 0.9)`,
   },
   list: {
     overflowY: 'auto',

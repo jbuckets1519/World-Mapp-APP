@@ -1,1 +1,1 @@
-export { default as BucketlistPanel } from './BucketlistPanel';
+export { default as BucketlistPanel, PailIcon } from './BucketlistPanel';

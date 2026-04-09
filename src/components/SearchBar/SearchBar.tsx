@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import { getPolygonId } from '../Globe/Globe';
 import { isUNMember } from '../../data/un-members';
+import { PailIcon } from '../Bucketlist';
 
 /** A single search result that could be a city, country, or state */
 interface SearchResult {
@@ -262,7 +263,8 @@ export default function SearchBar({
                     }}
                     title={inBucket ? 'Remove from bucketlist' : 'Add to bucketlist'}
                   >
-                    {inBucket ? '★' : '☆'}
+                    <PailIcon size={14} filled={inBucket}
+                      color={inBucket ? 'rgba(255, 100, 100, 0.9)' : 'rgba(255, 100, 100, 0.35)'} />
                   </button>
                 )}
               </div>
@@ -370,16 +372,14 @@ const styles: Record<string, React.CSSProperties> = {
   bucketBtn: {
     background: 'none',
     border: 'none',
-    color: 'rgba(255, 220, 100, 0.35)',
-    fontSize: '0.85rem',
     cursor: 'pointer',
     padding: '0.2rem',
     flexShrink: 0,
     lineHeight: 1,
+    display: 'flex',
+    alignItems: 'center',
   },
-  bucketBtnActive: {
-    color: 'rgba(255, 220, 100, 0.9)',
-  },
+  bucketBtnActive: {},
   resultIcon: {
     fontSize: '0.7rem',
     color: 'rgba(100, 180, 255, 0.6)',

@@ -59,10 +59,10 @@ const PURPLE_VISITED_CAP = 'rgba(180, 130, 255, 0.35)';
 const PURPLE_VISITED_SIDE = 'rgba(180, 130, 255, 0.15)';
 const PURPLE_VISITED_STROKE = 'rgba(180, 130, 255, 0.5)';
 
-// --- Bucketlist colors (light yellow) ---
-const BUCKET_CAP = 'rgba(255, 220, 100, 0.2)';
-const BUCKET_SIDE = 'rgba(255, 220, 100, 0.08)';
-const BUCKET_STROKE = 'rgba(255, 220, 100, 0.35)';
+// --- Bucketlist colors (light red) ---
+const BUCKET_CAP = 'rgba(255, 100, 100, 0.2)';
+const BUCKET_SIDE = 'rgba(255, 100, 100, 0.08)';
+const BUCKET_STROKE = 'rgba(255, 100, 100, 0.35)';
 const BUCKET_ALT = 0.007;
 // --- City dot colors ---
 // Default: soft white to stay neutral against the blue globe

@@ -12,6 +12,8 @@ export interface VisitedPlace {
   visit_start_date: string | null;
   /** Optional visit end date (YYYY-MM-DD) */
   visit_end_date: string | null;
+  /** Controls globe highlighting only — data persists regardless */
+  is_visited: boolean;
 }
 
 /** Date info passed when marking a place as visited */
@@ -72,8 +74,11 @@ export function useTravelData(userId: string | null) {
   // Track whether we've already verified the profile exists this session
   const profileChecked = useRef(false);
 
-  // Memoized set of visited place IDs for O(1) lookup
-  const visitedIds = useMemo(() => new Set(places.map((p) => p.place_id)), [places]);
+  // Only is_visited=true places get highlighted on the globe
+  const visitedIds = useMemo(
+    () => new Set(places.filter((p) => p.is_visited).map((p) => p.place_id)),
+    [places],
+  );
 
   // Fetch all visited places for the current user
   const loadPlaces = useCallback(async () => {
@@ -120,8 +125,8 @@ export function useTravelData(userId: string | null) {
     }
   }, [userId, loadPlaces]);
 
-  // Mark a place as visited, optionally with initial notes.
-  // Returns true on success, false on failure.
+  // Mark a place as visited. If a row already exists (is_visited=false),
+  // just flip the flag — all notes, photos, and dates stay untouched.
   const markVisited = useCallback(
     async (
       placeType: 'country' | 'territory' | 'state' | 'city',
@@ -135,6 +140,38 @@ export function useTravelData(userId: string | null) {
         return false;
       }
       console.log('[TravelData] markVisited →', { placeType, placeId, placeName, notes, dates, userId });
+
+      // Check if a row already exists for this place (may have is_visited=false)
+      const typesToCheck = (placeType === 'country' || placeType === 'territory')
+        ? ['country', 'territory'] : [placeType];
+      const existing = places.find(
+        (p) => typesToCheck.includes(p.place_type) && p.place_id === placeId,
+      );
+
+      if (existing) {
+        // Row exists — just set is_visited=true, optionally update dates
+        const updates: Record<string, unknown> = { is_visited: true };
+        if (dates) {
+          updates.visit_start_date = dates.startDate;
+          updates.visit_end_date = dates.endDate;
+        }
+        const { data, error } = await supabase
+          .from('visited_places')
+          .update(updates)
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('[TravelData] markVisited (reactivate) ERROR:', error.message, error);
+          return false;
+        }
+        setPlaces((prev) => prev.map((p) => p.id === existing.id ? data as VisitedPlace : p));
+        setVersion((v) => v + 1);
+        return true;
+      }
+
+      // No existing row — insert new
       const { data, error } = await supabase
         .from('visited_places')
         .insert({
@@ -143,6 +180,7 @@ export function useTravelData(userId: string | null) {
           place_id: placeId,
           place_name: placeName,
           notes,
+          is_visited: true,
           visit_start_date: dates?.startDate ?? null,
           visit_end_date: dates?.endDate ?? null,
         })
@@ -158,12 +196,10 @@ export function useTravelData(userId: string | null) {
       setVersion((v) => v + 1);
       return true;
     },
-    [userId],
+    [userId, places],
   );
 
-  // Remove a visited place
-  // Remove a visited place — matches both 'country' and 'territory' types
-  // so old data stored under the wrong type still gets removed
+  // Toggle off the globe highlight — notes, photos, and dates stay intact.
   const removeVisited = useCallback(
     async (placeType: string, placeId: string) => {
       if (!userId || !isSupabaseConfigured) {
@@ -174,7 +210,7 @@ export function useTravelData(userId: string | null) {
       const isPolygon = placeType === 'country' || placeType === 'territory';
       let query = supabase
         .from('visited_places')
-        .delete()
+        .update({ is_visited: false })
         .eq('user_id', userId)
         .eq('place_id', placeId);
       query = isPolygon
@@ -187,10 +223,14 @@ export function useTravelData(userId: string | null) {
         console.error('[TravelData] removeVisited ERROR:', error.message, error);
         return;
       }
-      console.log('[TravelData] removeVisited OK');
+      console.log('[TravelData] removeVisited OK (is_visited → false)');
       const typesToCheck = isPolygon ? ['country', 'territory'] : [placeType];
       setPlaces((prev) =>
-        prev.filter((p) => !(typesToCheck.includes(p.place_type) && p.place_id === placeId)),
+        prev.map((p) =>
+          typesToCheck.includes(p.place_type) && p.place_id === placeId
+            ? { ...p, is_visited: false }
+            : p,
+        ),
       );
       setVersion((v) => v + 1);
     },

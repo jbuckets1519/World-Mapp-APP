@@ -335,8 +335,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   dropdown: {
     marginTop: '4px',
-    background: 'rgba(15, 15, 25, 0.95)',
-    backdropFilter: 'blur(12px)',
+    background: 'rgb(15, 15, 25)',
     border: '1px solid rgba(100, 180, 255, 0.2)',
     borderRadius: '10px',
     overflow: 'hidden',

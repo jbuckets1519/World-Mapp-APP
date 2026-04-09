@@ -32,7 +32,7 @@ const MAX_ZOOM_DISTANCE = 500;
 // --- Country colors ---
 const COUNTRY_CAP = 'rgba(100, 180, 255, 0.15)';
 const COUNTRY_SIDE = 'rgba(100, 180, 255, 0.05)';
-const COUNTRY_STROKE = 'rgba(100, 180, 255, 0.9)';
+const COUNTRY_STROKE = 'rgba(100, 180, 255, 0.4)';
 const COUNTRY_SELECTED_CAP = 'rgba(100, 180, 255, 0.6)';
 const COUNTRY_SELECTED_SIDE = 'rgba(100, 180, 255, 0.35)';
 
@@ -140,7 +140,6 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getCapColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
-      if (f._borderOnly) return 'rgba(0, 0, 0, 0)';
       if (f._isLake) return LAKE_CAP;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_CAP : COUNTRY_SELECTED_CAP;
@@ -153,7 +152,6 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getSideColor = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
-      if (f._borderOnly) return 'rgba(0, 0, 0, 0)';
       if (f._isLake) return LAKE_SIDE;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_SIDE : COUNTRY_SELECTED_SIDE;
@@ -174,8 +172,6 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   const getAltitude = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
-      // Border-only features sit just above states so their stroke draws on top
-      if (f._borderOnly) return STATE_ALT + 0.001;
       if (f._isLake) return LAKE_ALT;
       const id = getPolygonId(f);
       if (id === selectedId) return f._isState ? STATE_SELECTED_ALT : COUNTRY_SELECTED_ALT;
@@ -185,17 +181,17 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     [selectedId, visitedVersion],
   );
 
-  // Lakes and border-only features get no label or click handling
+  // Lakes get no label or click handling
   const getLabel = useCallback((feat: object) => {
     const f = feat as GeoJsonFeature;
-    if (f._isLake || f._borderOnly) return '';
+    if (f._isLake) return '';
     return f.properties.NAME;
   }, []);
 
   const handleClick = useCallback(
     (feat: object) => {
       const f = feat as GeoJsonFeature;
-      if (f._isLake || f._borderOnly) return;
+      if (f._isLake) return;
       onPolygonClick?.(f);
     },
     [onPolygonClick],

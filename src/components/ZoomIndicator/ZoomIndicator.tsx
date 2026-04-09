@@ -6,7 +6,7 @@ interface ZoomIndicatorProps {
 const styles = {
   container: {
     position: 'fixed' as const,
-    top: '1rem',
+    top: 'calc(1rem + env(safe-area-inset-top, 0px))',
     left: '1rem',
     display: 'flex',
     alignItems: 'center',

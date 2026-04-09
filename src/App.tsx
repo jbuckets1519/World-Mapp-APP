@@ -592,7 +592,7 @@ export default function App() {
 const friendBannerStyles: Record<string, React.CSSProperties> = {
   banner: {
     position: 'fixed',
-    bottom: `${TAB_BAR_HEIGHT + 12}px`,
+    bottom: `calc(${TAB_BAR_HEIGHT + 12}px + env(safe-area-inset-bottom, 0px))`,
     left: '50%',
     transform: 'translateX(-50%)',
     display: 'flex',

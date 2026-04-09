@@ -311,11 +311,11 @@ export default function CountryPanel({
 const styles: Record<string, React.CSSProperties> = {
   panel: {
     position: 'fixed',
-    bottom: 'calc(56px + 1rem)',
+    bottom: 'calc(56px + 1rem + env(safe-area-inset-bottom, 0px))',
     right: '1.5rem',
     width: '320px',
     maxWidth: 'calc(100vw - 2rem)',
-    maxHeight: 'calc(100vh - 56px - 2rem)',
+    maxHeight: 'calc(100vh - 56px - 2rem - env(safe-area-inset-bottom, 0px))',
     overflowY: 'auto' as const,
     background: 'rgba(15, 15, 25, 0.92)',
     backdropFilter: 'blur(12px)',

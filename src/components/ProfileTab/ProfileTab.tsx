@@ -386,7 +386,7 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     position: 'fixed',
     inset: 0,
-    bottom: `${TAB_BAR_HEIGHT}px`,
+    bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
     background: 'rgba(8, 8, 18, 1)',
     zIndex: 5,
   },
@@ -394,6 +394,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     overflowY: 'auto' as const,
     padding: '1.5rem',
+    paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
     maxWidth: '480px',
     margin: '0 auto',
   },

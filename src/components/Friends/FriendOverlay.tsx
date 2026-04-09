@@ -156,7 +156,7 @@ export default function FriendOverlay({
 const styles: Record<string, React.CSSProperties> = {
   container: {
     position: 'fixed',
-    top: '5.8rem',
+    top: 'calc(5.8rem + env(safe-area-inset-top, 0px))',
     left: '1rem',
     zIndex: 1000,
   },

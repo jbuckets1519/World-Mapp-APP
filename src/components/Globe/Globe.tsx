@@ -217,58 +217,48 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     [onPolygonClick],
   );
 
-  // --- City point accessors ---
-  // Scale dot size with zoom: tiny at low zoom, more visible zoomed in
+  // --- City HTML dot accessors ---
   const zoomRef = useRef(zoomLevel);
   zoomRef.current = zoomLevel;
 
-  const getCityRadius = useCallback(
-    (pt: object) => {
-      const city = pt as CityPoint;
+  // Build the HTML element for each city dot
+  const getCityElement = useCallback(
+    (d: object) => {
+      const city = d as CityPoint;
       const z = zoomRef.current;
-      // Smooth scaling up to zoom 70, then capped to prevent giant dots
+      // Smooth size scaling up to zoom 70, then capped
       const capped = Math.min(z, 70);
       const t = capped / 100;
-      const base = 0.03 + t * t * 0.19;
-      // More important cities (lower scaleRank) are slightly larger
+      // Convert globe-unit radius to pixel size
+      const baseRadius = 0.03 + t * t * 0.19;
       const rankBonus = Math.max(0, (5 - city.scaleRank) * 0.01);
-      // Selected city is extra prominent
-      if (city.id === selectedId) return base + rankBonus + 0.12;
-      return base + rankBonus;
-    },
-    [selectedId, zoomLevel],
-  );
+      const isSelected = city.id === selectedId;
+      const radius = isSelected ? baseRadius + rankBonus + 0.12 : baseRadius + rankBonus;
+      // Map globe radius to px (roughly 40px per globe unit looks right)
+      const sizePx = Math.max(3, Math.round(radius * 40));
 
-  const getCityColor = useCallback(
-    (pt: object) => {
-      const city = pt as CityPoint;
-      if (city.id === selectedId) return CITY_SELECTED_COLOR;
-      // Visited cities are always green regardless of whose map
-      if (visitedRef.current?.has(city.id)) return CITY_VISITED_COLOR;
-      return CITY_COLOR;
-    },
-    [selectedId, visitedVersion],
-  );
+      // Color logic: selected = cyan, visited = green, default = white
+      let color = CITY_COLOR;
+      if (isSelected) color = CITY_SELECTED_COLOR;
+      else if (visitedRef.current?.has(city.id)) color = CITY_VISITED_COLOR;
 
-  const getCityLabel = useCallback((pt: object) => {
-    const city = pt as CityPoint;
-    return `<b>${city.name}</b><br/><span style="color:rgba(255,255,255,0.6)">${city.country}</span>`;
-  }, []);
-
-  const getCityAltitude = useCallback(
-    (pt: object) => {
-      const city = pt as CityPoint;
-      // Above polygons so city clicks register; selected lifts a bit more
-      return city.id === selectedId ? 0.04 : 0.011;
+      const el = document.createElement('div');
+      el.style.width = `${sizePx}px`;
+      el.style.height = `${sizePx}px`;
+      el.style.borderRadius = '50%';
+      el.style.background = color;
+      el.style.cursor = 'pointer';
+      el.style.pointerEvents = 'auto';
+      // Tooltip on hover
+      el.title = `${city.name}, ${city.country}`;
+      // Click handler
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onCityClick?.(city);
+      });
+      return el;
     },
-    [selectedId],
-  );
-
-  const handleCityClick = useCallback(
-    (pt: object) => {
-      onCityClick?.(pt as CityPoint);
-    },
-    [onCityClick],
+    [selectedId, zoomLevel, visitedVersion, onCityClick],
   );
 
   return (
@@ -289,17 +279,12 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       polygonsTransitionDuration={300}
       onPolygonClick={handleClick}
       onGlobeClick={onGlobeClick}
-      pointsData={cities}
-      pointLat="lat"
-      pointLng="lng"
-      pointColor={getCityColor}
-      pointRadius={getCityRadius}
-      pointAltitude={getCityAltitude}
-      pointLabel={getCityLabel}
-      pointResolution={12}
-      pointsMerge={false}
-      pointsTransitionDuration={300}
-      onPointClick={handleCityClick}
+      htmlElementsData={cities}
+      htmlLat="lat"
+      htmlLng="lng"
+      htmlAltitude={0.011}
+      htmlElement={getCityElement}
+      htmlTransitionDuration={300}
     />
   );
 });

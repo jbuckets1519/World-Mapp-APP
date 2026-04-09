@@ -147,6 +147,13 @@ export default function App() {
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('globe');
 
+  // Clear overlays when switching tabs so nothing bleeds across views
+  const handleTabChange = useCallback((tab: TabId) => {
+    setActiveTab(tab);
+    setViewingProfileId(null);
+    setShowGallery(false);
+  }, []);
+
   // Are we viewing a friend's map? This drives the entire UI mode.
   const isFriendView = Boolean(activeFriendId);
 
@@ -582,7 +589,7 @@ export default function App() {
 
       {/* Bottom tab bar — only show when logged in */}
       {user && (
-        <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
       )}
     </>
   );

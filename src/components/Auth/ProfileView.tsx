@@ -181,11 +181,13 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
+    paddingTop: 'env(safe-area-inset-top, 0px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     background: 'rgba(0, 0, 0, 0.6)',
     zIndex: 30,
+    boxSizing: 'border-box',
   },
   card: {
     width: '340px',

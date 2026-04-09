@@ -280,7 +280,7 @@ const styles: Record<string, React.CSSProperties> = {
   // Collapsed icon button — sits below the zoom indicator
   iconBtn: {
     position: 'fixed',
-    top: '5.8rem',
+    top: '3.2rem',
     left: '1rem',
     width: '34px',
     height: '34px',
@@ -296,7 +296,7 @@ const styles: Record<string, React.CSSProperties> = {
   // Expanded container — same top-left position
   container: {
     position: 'fixed',
-    top: '5.8rem',
+    top: '3.2rem',
     left: '1rem',
     width: '300px',
     maxWidth: 'calc(100vw - 2rem)',

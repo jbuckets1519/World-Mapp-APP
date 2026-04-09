@@ -13,6 +13,7 @@ import { AuthOverlay, ProfileView, ProfileSetup, PasswordReset } from './compone
 import { TabBar, TAB_BAR_HEIGHT } from './components/Navigation';
 import type { TabId } from './components/Navigation';
 import { ProfileTab } from './components/ProfileTab';
+import { FriendsTab } from './components/FriendsTab';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
@@ -541,6 +542,20 @@ export default function App() {
         )}
       </div>
 
+      {/* Friends tab */}
+      {activeTab === 'friends' && user && (
+        <FriendsTab
+          following={following}
+          followers={followers}
+          friendsLoading={friendsLoading}
+          onSearchUsers={searchUsers}
+          onFollow={follow}
+          onUnfollow={unfollow}
+          isFollowing={isFollowing}
+          onViewProfile={setViewingProfileId}
+        />
+      )}
+
       {/* Profile tab */}
       {activeTab === 'profile' && user && profile && (
         <ProfileTab
@@ -551,14 +566,6 @@ export default function App() {
           onSave={updateProfile}
           onUploadAvatar={uploadAvatar}
           onSignOut={signOut}
-          following={following}
-          followers={followers}
-          friendsLoading={friendsLoading}
-          onSearchUsers={searchUsers}
-          onFollow={follow}
-          onUnfollow={unfollow}
-          isFollowing={isFollowing}
-          onViewProfile={setViewingProfileId}
         />
       )}
 

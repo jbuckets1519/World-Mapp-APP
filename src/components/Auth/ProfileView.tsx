@@ -4,6 +4,7 @@ import type { ProfileData } from '../../hooks/useProfile';
 import type { VisitedPlace } from '../../hooks/useTravelData';
 import TravelStats from './TravelStats';
 import { Achievements } from '../Achievements';
+import { TAB_BAR_HEIGHT } from '../Navigation';
 import { isUNMember } from '../../data/un-members';
 import { COUNTRY_TO_CONTINENT } from '../../data/continents';
 import type { Continent } from '../../data/continents';
@@ -176,7 +177,10 @@ export default function ProfileView({
 const styles: Record<string, React.CSSProperties> = {
   backdrop: {
     position: 'fixed',
-    inset: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -186,7 +190,7 @@ const styles: Record<string, React.CSSProperties> = {
   card: {
     width: '340px',
     maxWidth: 'calc(100vw - 2rem)',
-    maxHeight: 'calc(100vh - 4rem)',
+    maxHeight: 'calc(100% - 2rem)',
     overflowY: 'auto' as const,
     background: 'rgba(15, 15, 25, 0.97)',
     backdropFilter: 'blur(12px)',

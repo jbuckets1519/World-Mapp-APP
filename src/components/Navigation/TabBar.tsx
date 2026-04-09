@@ -1,8 +1,13 @@
-export type TabId = 'globe' | 'profile';
+export type TabId = 'globe' | 'friends' | 'profile';
 
 interface TabBarProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
+}
+
+/** Reusable helper — returns the active or inactive colour for a tab */
+function tabColor(active: boolean): string {
+  return active ? 'rgba(100, 180, 255, 0.95)' : 'rgba(255, 255, 255, 0.4)';
 }
 
 export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
@@ -16,9 +21,9 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
         onClick={() => onTabChange('globe')}
         aria-label="Globe"
       >
-        {/* Home / Globe icon */}
+        {/* Globe icon */}
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-          stroke={activeTab === 'globe' ? 'rgba(100, 180, 255, 0.95)' : 'rgba(255, 255, 255, 0.4)'}
+          stroke={tabColor(activeTab === 'globe')}
           strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
         >
           <path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z" />
@@ -26,11 +31,31 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
           <path d="M3.6 15h16.8" />
           <path d="M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z" />
         </svg>
-        <span style={{
-          ...styles.tabLabel,
-          color: activeTab === 'globe' ? 'rgba(100, 180, 255, 0.95)' : 'rgba(255, 255, 255, 0.4)',
-        }}>
+        <span style={{ ...styles.tabLabel, color: tabColor(activeTab === 'globe') }}>
           Globe
+        </span>
+      </button>
+
+      <button
+        style={{
+          ...styles.tab,
+          ...(activeTab === 'friends' ? styles.tabActive : {}),
+        }}
+        onClick={() => onTabChange('friends')}
+        aria-label="Friends"
+      >
+        {/* People/group icon */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke={tabColor(activeTab === 'friends')}
+          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+        >
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        <span style={{ ...styles.tabLabel, color: tabColor(activeTab === 'friends') }}>
+          Friends
         </span>
       </button>
 
@@ -44,16 +69,13 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
       >
         {/* Person icon */}
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-          stroke={activeTab === 'profile' ? 'rgba(100, 180, 255, 0.95)' : 'rgba(255, 255, 255, 0.4)'}
+          stroke={tabColor(activeTab === 'profile')}
           strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
         >
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
-        <span style={{
-          ...styles.tabLabel,
-          color: activeTab === 'profile' ? 'rgba(100, 180, 255, 0.95)' : 'rgba(255, 255, 255, 0.4)',
-        }}>
+        <span style={{ ...styles.tabLabel, color: tabColor(activeTab === 'profile') }}>
           Profile
         </span>
       </button>

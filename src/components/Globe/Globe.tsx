@@ -66,9 +66,9 @@ const BUCKET_STROKE = 'rgba(255, 100, 100, 0.35)';
 const BUCKET_ALT = 0.007;
 // --- City dot colors ---
 // Default: soft white to stay neutral against the blue globe
-const CITY_COLOR = 'rgba(220, 220, 230, 0.6)';
+const CITY_COLOR = 'rgba(220, 220, 230, 1)';
 // Visited: green to differentiate from orange visited-countries
-const CITY_VISITED_COLOR = 'rgba(80, 200, 120, 0.9)';
+const CITY_VISITED_COLOR = 'rgba(80, 200, 120, 1)';
 // Selected: bright cyan matching the UI accent
 const CITY_SELECTED_COLOR = 'rgba(100, 220, 255, 1)';
 

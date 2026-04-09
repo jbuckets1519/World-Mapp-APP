@@ -83,7 +83,7 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
   );
 }
 
-const TAB_BAR_HEIGHT = 56;
+const TAB_BAR_HEIGHT = 44;
 
 // Export so other components can account for the tab bar height
 export { TAB_BAR_HEIGHT };
@@ -115,7 +115,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    padding: '6px 0',
+    padding: '4px 0',
     fontFamily: 'inherit',
     maxWidth: '120px',
   },

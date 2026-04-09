@@ -29,7 +29,6 @@ const STATE_ZOOM_OFF = 80;
 const COUNTRIES_WITH_SUBDIVISIONS = new Set([
   'United States of America',
   'Canada',
-  'Mexico',
 ]);
 
 function distanceToZoomLevel(distance: number): number {

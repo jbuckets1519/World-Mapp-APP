@@ -380,7 +380,7 @@ export default function App() {
         onCityClick={handleCityClick}
         onZoomChange={handleZoomChange}
         onGlobeClick={handleClose}
-        bucketlistIds={showBucketlistOverlay ? bucketlistIds : undefined}
+        bucketlistIds={showBucketlistOverlay && !isFriendView ? bucketlistIds : undefined}
         bucketlistVersion={showBucketlistOverlay ? bucketlistVersion : 0}
       />
       <SearchBar

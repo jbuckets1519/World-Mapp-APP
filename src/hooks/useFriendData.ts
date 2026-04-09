@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { VisitedPlace } from './useTravelData';
 import type { TravelPhoto } from './useTravelPhotos';
+import type { BucketlistItem } from './useBucketlist';
 
 const SIGNED_URL_EXPIRY = 3600;
 
@@ -16,8 +17,26 @@ export function useFriendData() {
   const [loadingPlaces, setLoadingPlaces] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [activeFriendId, setActiveFriendId] = useState<string | null>(null);
+  const [friendBucketlistIds, setFriendBucketlistIds] = useState<Set<string>>(new Set());
   // Version counter — tells the Globe to re-evaluate color accessors
   const [version, setVersion] = useState(0);
+
+  // Load a friend's bucketlist items
+  const loadFriendBucketlist = useCallback(async (friendId: string) => {
+    if (!isSupabaseConfigured) return;
+    const { data, error } = await supabase
+      .from('bucketlist')
+      .select('*')
+      .eq('user_id', friendId);
+
+    if (error) {
+      console.error('[FriendData] loadFriendBucketlist ERROR:', error.message);
+      setFriendBucketlistIds(new Set());
+    } else {
+      const ids = new Set((data ?? []).map((item: BucketlistItem) => item.place_id));
+      setFriendBucketlistIds(ids);
+    }
+  }, []);
 
   // Load all visited places for a given friend
   const loadFriendPlaces = useCallback(async (friendId: string) => {
@@ -49,15 +68,18 @@ export function useFriendData() {
         console.log('[FriendData] sample row:', places[0]);
       }
     }
+    // Also load their bucketlist
+    loadFriendBucketlist(friendId);
     setVersion((v) => v + 1);
     setLoadingPlaces(false);
-  }, []);
+  }, [loadFriendBucketlist]);
 
   // Clear friend overlay
   const clearFriend = useCallback(() => {
     setFriendPlaces([]);
     setFriendVisitedIds(new Set());
     setFriendPhotos([]);
+    setFriendBucketlistIds(new Set());
     setActiveFriendId(null);
     setVersion((v) => v + 1);
   }, []);
@@ -130,6 +152,7 @@ export function useFriendData() {
   return {
     friendPlaces,
     friendVisitedIds,
+    friendBucketlistIds,
     friendPhotos,
     activeFriendId,
     version,

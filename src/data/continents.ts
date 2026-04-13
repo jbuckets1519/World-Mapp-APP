@@ -258,3 +258,26 @@ export const COUNTRY_TO_CONTINENT: Record<string, Continent> = {
   // --- Antarctica ---
   'Antarctica': 'Antarctica',
 };
+
+/**
+ * Muted continent accent colors for the dark UI.
+ * Each continent has a primary (borders, text), bg (tinted backgrounds),
+ * and glow (subtle box-shadow) variant.
+ */
+export const CONTINENT_COLORS: Record<Continent, { primary: string; bg: string; glow: string }> = {
+  'North America': { primary: 'rgba(100, 160, 255, 0.8)',  bg: 'rgba(100, 160, 255, 0.08)', glow: 'rgba(100, 160, 255, 0.15)' },
+  'South America': { primary: 'rgba(80, 200, 120, 0.8)',   bg: 'rgba(80, 200, 120, 0.08)',  glow: 'rgba(80, 200, 120, 0.15)' },
+  'Africa':        { primary: 'rgba(255, 170, 60, 0.8)',   bg: 'rgba(255, 170, 60, 0.08)',  glow: 'rgba(255, 170, 60, 0.15)' },
+  'Europe':        { primary: 'rgba(255, 220, 80, 0.8)',   bg: 'rgba(255, 220, 80, 0.08)',  glow: 'rgba(255, 220, 80, 0.15)' },
+  'Asia':          { primary: 'rgba(240, 90, 90, 0.8)',    bg: 'rgba(240, 90, 90, 0.08)',   glow: 'rgba(240, 90, 90, 0.15)' },
+  'Oceania':       { primary: 'rgba(180, 130, 255, 0.8)',  bg: 'rgba(180, 130, 255, 0.08)', glow: 'rgba(180, 130, 255, 0.15)' },
+  'Antarctica':    { primary: 'rgba(255, 160, 200, 0.8)',  bg: 'rgba(255, 160, 200, 0.08)', glow: 'rgba(255, 160, 200, 0.15)' },
+};
+
+/** Look up continent color for a place_id like "country:France" or a raw country name. */
+export function getContinentColor(placeIdOrName: string): { primary: string; bg: string; glow: string } {
+  const name = placeIdOrName.replace(/^(country|territory):/, '');
+  const continent = COUNTRY_TO_CONTINENT[name];
+  if (continent) return CONTINENT_COLORS[continent];
+  return { primary: 'rgba(255, 255, 255, 0.15)', bg: 'rgba(255, 255, 255, 0.04)', glow: 'rgba(255, 255, 255, 0.06)' };
+}

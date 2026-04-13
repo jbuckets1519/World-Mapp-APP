@@ -1,6 +1,7 @@
 import { memo, useRef, useState, useCallback } from 'react';
 import type { ActivityItem } from '../../hooks/useActivityFeed';
 import { TAB_BAR_HEIGHT } from '../Navigation';
+import { getContinentColor } from '../../data/continents';
 import { Badge, resolveBadge } from '../Achievements/Achievements';
 
 interface FeedTabProps {
@@ -269,7 +270,12 @@ function FeedTab({
                   <div
                     key={item.id}
                     className="btn-press"
-                    style={{ ...styles.card, cursor: 'pointer' }}
+                    style={{
+                      ...styles.card,
+                      cursor: 'pointer',
+                      borderLeftColor: getContinentColor(item.place_name ?? '').primary,
+                      borderLeftWidth: '3px',
+                    }}
                     onClick={() => handleItemClick(item)}
                     role="button"
                   >
@@ -343,6 +349,8 @@ function FeedTab({
                   style={{
                     ...styles.card,
                     cursor: clickable ? 'pointer' : 'default',
+                    borderLeftColor: getContinentColor(item.place_name ?? '').primary,
+                    borderLeftWidth: '3px',
                   }}
                   onClick={clickable ? () => handleItemClick(item) : undefined}
                   role={clickable ? 'button' : undefined}
@@ -425,6 +433,7 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '480px',
     margin: '0 auto',
     animation: 'tabFadeIn 260ms ease-out',
+    background: 'linear-gradient(180deg, rgba(100, 160, 255, 0.04) 0%, transparent 180px)',
   },
   headerRow: {
     display: 'flex',

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { VisitedPlace } from '../../hooks/useTravelData';
-import { COUNTRY_TO_CONTINENT, CONTINENTS } from '../../data/continents';
+import { COUNTRY_TO_CONTINENT, CONTINENTS, CONTINENT_COLORS } from '../../data/continents';
 import { isUNMember, TOTAL_UN_COUNTRIES } from '../../data/un-members';
 import type { Continent } from '../../data/continents';
 
@@ -80,9 +80,17 @@ export default function TravelStats({ places, photoCount }: TravelStatsProps) {
         <div style={styles.continentSection}>
           <span style={styles.continentLabel}>Visited continents</span>
           <div style={styles.continentList}>
-            {stats.visitedContinents.map((c) => (
-              <span key={c} style={styles.continentTag}>{c}</span>
-            ))}
+            {stats.visitedContinents.map((c) => {
+              const cc = CONTINENT_COLORS[c];
+              return (
+                <span key={c} style={{
+                  ...styles.continentTag,
+                  background: cc.bg,
+                  borderColor: cc.primary,
+                  color: cc.primary,
+                }}>{c}</span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -123,13 +131,11 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column' as const,
     alignItems: 'center',
     justifyContent: 'center',
-    // Fixed height keeps the 3-col grid visually symmetrical even
-    // though the last row has a single tile
     minHeight: '92px',
     padding: '0.9rem 0.5rem',
     background: 'rgba(255, 255, 255, 0.04)',
     borderRadius: '18px',
-    border: '1px solid rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(100, 160, 255, 0.1)',
     overflow: 'hidden',
   },
   tileValue: {
@@ -171,5 +177,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.72rem',
     color: 'rgba(100, 180, 255, 0.85)',
     fontWeight: 500,
+    transition: 'all 200ms ease-out',
   },
 };

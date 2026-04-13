@@ -15,6 +15,30 @@ interface FriendsTabProps {
   onViewProfile: (userId: string) => void;
 }
 
+/** Small circular avatar — image or initial letter */
+function FriendAvatar({ profile }: { profile: UserProfile }) {
+  const name = profile.username || profile.display_name || '?';
+  const initial = name[0].toUpperCase();
+  if (profile.avatar_url) {
+    return (
+      <div style={{
+        width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+        backgroundImage: `url(${profile.avatar_url})`,
+        backgroundSize: 'cover', backgroundPosition: 'center',
+      }} />
+    );
+  }
+  return (
+    <div style={{
+      width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+      background: 'rgba(100, 180, 255, 0.12)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(100, 180, 255, 0.7)' }}>{initial}</span>
+    </div>
+  );
+}
+
 function FriendsTab({
   following,
   followers,
@@ -86,6 +110,7 @@ function FriendsTab({
           <div style={styles.searchResults}>
             {searchResults.map((user) => (
               <div key={user.id} style={styles.userRow}>
+                <FriendAvatar profile={user} />
                 <div style={styles.userInfo} onClick={() => onViewProfile(user.id)} role="button">
                   <div style={styles.userNameLink}>{displayUser(user)}</div>
                 </div>
@@ -137,6 +162,7 @@ function FriendsTab({
             ) : (
               following.map((rel) => (
                 <div key={rel.id} style={styles.userRow}>
+                  <FriendAvatar profile={rel.profile} />
                   <div style={styles.userInfo} onClick={() => onViewProfile(rel.following_id)} role="button">
                     <div style={styles.userNameLink}>{displayUser(rel.profile)}</div>
                   </div>
@@ -156,6 +182,7 @@ function FriendsTab({
           ) : (
             followers.map((rel) => (
               <div key={rel.id} style={styles.userRow}>
+                <FriendAvatar profile={rel.profile} />
                 <div style={styles.userInfo} onClick={() => onViewProfile(rel.follower_id)} role="button">
                   <div style={styles.userNameLink}>{displayUser(rel.profile)}</div>
                 </div>
@@ -200,6 +227,7 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '480px',
     margin: '0 auto',
     animation: 'tabFadeIn 260ms ease-out',
+    background: 'linear-gradient(180deg, rgba(80, 200, 120, 0.03) 0%, transparent 180px)',
   },
   heading: {
     margin: '0 0 1.25rem',
@@ -253,8 +281,11 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '0.5rem 0',
-    gap: '0.5rem',
+    padding: '0.65rem 0.75rem',
+    gap: '0.75rem',
+    borderRadius: '14px',
+    marginBottom: '0.25rem',
+    background: 'rgba(255, 255, 255, 0.02)',
   },
   userInfo: {
     flex: 1,

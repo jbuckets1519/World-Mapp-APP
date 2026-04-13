@@ -84,11 +84,15 @@ function CountryPanel({
   }, [visitedData, displayName]);
 
   // --- "Mark as visited" flow ---
-  const handleMarkVisitedClick = () => {
+  const handleMarkVisitedClick = async () => {
+    console.log('[CountryPanel] handleMarkVisitedClick →', { hasData, isVisited, displayName });
     if (hasData) {
       // Row already exists (was unvisited) — just flip the flag
-      onMarkVisited();
+      console.log('[CountryPanel] existing row found — calling onMarkVisited()');
+      const ok = await onMarkVisited();
+      console.log('[CountryPanel] onMarkVisited result:', ok);
     } else {
+      console.log('[CountryPanel] no existing row — showing date picker');
       setShowNewDatePicker(true);
     }
   };

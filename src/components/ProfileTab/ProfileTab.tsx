@@ -42,6 +42,7 @@ function ProfileTab({
 }: ProfileTabProps) {
   // --- Social list overlay ---
   const [socialList, setSocialList] = useState<'following' | 'followers' | null>(null);
+  const [socialSearch, setSocialSearch] = useState('');
 
   // --- Profile editing state ---
   const [editing, setEditing] = useState(false);
@@ -212,7 +213,7 @@ function ProfileTab({
           <button
             className="btn-press"
             style={styles.socialBtn}
-            onClick={() => setSocialList('following')}
+            onClick={() => { setSocialSearch(''); setSocialList('following'); }}
           >
             <span style={styles.socialCount}>{following.length}</span> Following
           </button>
@@ -220,7 +221,7 @@ function ProfileTab({
           <button
             className="btn-press"
             style={styles.socialBtn}
-            onClick={() => setSocialList('followers')}
+            onClick={() => { setSocialSearch(''); setSocialList('followers'); }}
           >
             <span style={styles.socialCount}>{followers.length}</span> Follower{followers.length === 1 ? '' : 's'}
           </button>
@@ -234,54 +235,79 @@ function ProfileTab({
       </div>
 
       {/* ---- Social list overlay ---- */}
-      {socialList && (
-        <div style={styles.socialOverlay} onClick={() => setSocialList(null)}>
-          <div style={styles.socialPanel} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.socialHeader}>
-              <h3 style={styles.socialHeading}>
-                {socialList === 'following' ? 'Following' : 'Followers'}
-              </h3>
-              <button style={styles.socialCloseBtn} onClick={() => setSocialList(null)} aria-label="Close">
-                ✕
-              </button>
-            </div>
-            <div style={styles.socialListScroll}>
-              {(socialList === 'following' ? following : followers).length === 0 ? (
-                <p style={styles.socialEmpty}>
-                  {socialList === 'following'
-                    ? "You're not following anyone yet"
-                    : 'No followers yet'}
-                </p>
-              ) : (
-                (socialList === 'following' ? following : followers).map((rel) => {
-                  const userId = socialList === 'following' ? rel.following_id : rel.follower_id;
-                  const name = rel.profile?.username || rel.profile?.display_name || 'Unknown';
-                  return (
-                    <button
-                      key={rel.id}
-                      className="btn-press"
-                      style={styles.socialUserRow}
-                      onClick={() => {
-                        setSocialList(null);
-                        onViewProfile(userId);
-                      }}
-                    >
-                      {rel.profile?.avatar_url ? (
-                        <div style={{ ...styles.socialAvatar, backgroundImage: `url(${rel.profile.avatar_url})` }} />
-                      ) : (
-                        <div style={styles.socialAvatar}>
-                          <span style={styles.socialAvatarInitial}>{name[0].toUpperCase()}</span>
-                        </div>
-                      )}
-                      <span style={styles.socialUserName}>{name}</span>
-                    </button>
-                  );
-                })
+      {socialList && (() => {
+        const rawList = socialList === 'following' ? following : followers;
+        const q = socialSearch.trim().toLowerCase();
+        const filtered = q.length > 0
+          ? rawList.filter((rel) => {
+              const u = rel.profile?.username?.toLowerCase() ?? '';
+              const d = rel.profile?.display_name?.toLowerCase() ?? '';
+              return u.includes(q) || d.includes(q);
+            })
+          : rawList;
+        return (
+          <div style={styles.socialOverlay} onClick={() => setSocialList(null)}>
+            <div style={styles.socialPanel} onClick={(e) => e.stopPropagation()}>
+              <div style={styles.socialHeader}>
+                <h3 style={styles.socialHeading}>
+                  {socialList === 'following' ? 'Following' : 'Followers'}
+                </h3>
+                <button style={styles.socialCloseBtn} onClick={() => setSocialList(null)} aria-label="Close">
+                  ✕
+                </button>
+              </div>
+              {rawList.length > 0 && (
+                <div style={styles.socialSearchWrap}>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={socialSearch}
+                    onChange={(e) => setSocialSearch(e.target.value)}
+                    style={styles.socialSearchInput}
+                    autoFocus
+                  />
+                </div>
               )}
+              <div style={styles.socialListScroll}>
+                {rawList.length === 0 ? (
+                  <p style={styles.socialEmpty}>
+                    {socialList === 'following'
+                      ? "You're not following anyone yet"
+                      : 'No followers yet'}
+                  </p>
+                ) : filtered.length === 0 ? (
+                  <p style={styles.socialEmpty}>No matches</p>
+                ) : (
+                  filtered.map((rel) => {
+                    const userId = socialList === 'following' ? rel.following_id : rel.follower_id;
+                    const name = rel.profile?.username || rel.profile?.display_name || 'Unknown';
+                    return (
+                      <button
+                        key={rel.id}
+                        className="btn-press"
+                        style={styles.socialUserRow}
+                        onClick={() => {
+                          setSocialList(null);
+                          onViewProfile(userId);
+                        }}
+                      >
+                        {rel.profile?.avatar_url ? (
+                          <div style={{ ...styles.socialAvatar, backgroundImage: `url(${rel.profile.avatar_url})` }} />
+                        ) : (
+                          <div style={styles.socialAvatar}>
+                            <span style={styles.socialAvatarInitial}>{name[0].toUpperCase()}</span>
+                          </div>
+                        )}
+                        <span style={styles.socialUserName}>{name}</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -506,26 +532,29 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '0.5rem',
-    padding: '0.85rem 0 0.25rem',
+    gap: '0.65rem',
+    padding: '1rem 0 1rem',
+    marginBottom: '0.25rem',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
   },
   socialBtn: {
     background: 'none',
     border: 'none',
     color: 'rgba(255, 255, 255, 0.55)',
-    fontSize: '0.82rem',
+    fontSize: '1.1rem',
     cursor: 'pointer',
     fontFamily: 'inherit',
-    padding: '0.25rem 0.4rem',
+    padding: '0.3rem 0.5rem',
     borderRadius: '6px',
   },
   socialCount: {
-    fontWeight: 700,
-    color: 'rgba(255, 255, 255, 0.88)',
+    fontWeight: 800,
+    color: 'rgba(255, 255, 255, 0.92)',
+    fontSize: '1.15rem',
   },
   socialDot: {
-    color: 'rgba(255, 255, 255, 0.25)',
-    fontSize: '0.9rem',
+    color: 'rgba(255, 255, 255, 0.2)',
+    fontSize: '1.1rem',
   },
 
   // --- Social list overlay ---
@@ -578,6 +607,22 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.25rem 0.5rem',
     lineHeight: 1,
     fontFamily: 'inherit',
+  },
+  socialSearchWrap: {
+    padding: '0.5rem 0.75rem 0',
+    flexShrink: 0,
+  },
+  socialSearchInput: {
+    width: '100%',
+    padding: '0.55rem 0.85rem',
+    background: 'rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.88)',
+    fontSize: '0.8rem',
+    fontFamily: 'inherit',
+    outline: 'none',
+    boxSizing: 'border-box' as const,
   },
   socialListScroll: {
     overflowY: 'auto' as const,

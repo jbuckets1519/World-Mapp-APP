@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 
-import { Globe } from './components/Globe';
-import type { GlobeHandle } from './components/Globe';
-import { getPolygonId } from './components/Globe/Globe';
+// Globe pulls in react-globe.gl + three.js (~2 MB). Lazy-load so the rest of
+// the app (auth, tabs, UI) paints instantly while the globe chunk streams in.
+const Globe = lazy(() => import('./components/Globe/Globe'));
+import type { GlobeHandle } from './components/Globe/Globe';
+import { getPolygonId } from './components/Globe/getPolygonId';
+import GlobeLoader from './components/Globe/GlobeLoader';
 import { CountryPanel } from './components/CountryPanel';
-import PhotoGallery from './components/CountryPanel/PhotoGallery';
-import { ZoomIndicator } from './components/ZoomIndicator';
+import { CountryActivity } from './components/CountryActivity';
 import { SearchBar } from './components/SearchBar';
 import { FriendOverlay } from './components/Friends';
 import { BucketlistPanel } from './components/Bucketlist';
@@ -14,16 +16,34 @@ import { TabBar, TAB_BAR_HEIGHT } from './components/Navigation';
 import type { TabId } from './components/Navigation';
 import { ProfileTab } from './components/ProfileTab';
 import { FriendsTab } from './components/FriendsTab';
+import { FeedTab } from './components/FeedTab';
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
-import { useTravelPhotos } from './hooks/useTravelPhotos';
+import { usePosts } from './hooks/usePosts';
 import { useFriends } from './hooks/useFriends';
 import { useFriendData } from './hooks/useFriendData';
 import { useProfile } from './hooks/useProfile';
 import { useBucketlist } from './hooks/useBucketlist';
+import { useActivityFeed } from './hooks/useActivityFeed';
 import type { GeoJsonFeature, CityPoint } from './types';
 import { isUNMember } from './data/un-members';
+import { COUNTRY_TO_CONTINENT } from './data/continents';
+
+// Badge thresholds — kept in sync with src/components/Achievements/Achievements.tsx
+// so we can detect when the user crosses a tier and log an activity.
+const WORLD_THRESHOLDS = [1, 5, 15, 30, 50];
+const CONTINENT_THRESHOLDS = [1, 2, 4, 6, 7];
+const WORLD_TIER_NAMES = ['Wanderer', 'Explorer', 'Adventurer', 'Pathfinder', 'World Citizen'];
+const CONTINENT_TIER_NAMES = ['Local', 'Bi-coastal', 'Globetrotter', 'World Span', 'Full Lap'];
+
+function currentTier(count: number, thresholds: number[]): number {
+  let tier = -1;
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    if (count >= thresholds[i]) { tier = i; break; }
+  }
+  return tier;
+}
 
 const MIN_ZOOM_DISTANCE = 120;
 const MAX_ZOOM_DISTANCE = 500;
@@ -76,20 +96,21 @@ export default function App() {
     version: visitedVersion,
     markVisited,
     removeVisited,
-    updateNotes,
     updateDates,
     getPlace,
   } = useTravelData(user?.id ?? null);
 
   const {
-    photos,
-    loading: photosLoading,
-    uploading: photosUploading,
+    posts,
+    loading: postsLoading,
+    creating: postsCreating,
+    deleting: postsDeleting,
     totalPhotoCount,
-    loadPhotos,
-    uploadPhoto,
-    deletePhoto,
-  } = useTravelPhotos(user?.id ?? null);
+    loadPostsForPlace,
+    clearPosts,
+    createPost,
+    deletePost,
+  } = usePosts(user?.id ?? null);
 
   const {
     following,
@@ -116,22 +137,34 @@ export default function App() {
     activeFriendId,
     version: friendVersion,
     loadingPlaces: friendLoadingPlaces,
-    friendPhotos,
-    loadingPhotos: friendPhotosLoading,
     loadFriendPlaces,
     clearFriend,
     getFriendPlace,
-    loadFriendPhotos,
   } = useFriendData();
 
   const {
     items: bucketlistItems,
     bucketlistIds,
     loading: bucketlistLoading,
-    addItem: addBucketlistItem,
+    addItem: addBucketlistItemRaw,
     removeItem: removeBucketlistItem,
     isInBucketlist,
   } = useBucketlist(user?.id ?? null);
+
+  // Activity feed — pulls from people the current user follows
+  const followingIds = useMemo(
+    () => following.map((f) => f.following_id),
+    [following],
+  );
+  const {
+    feed: activityFeed,
+    loading: activityLoading,
+    refreshing: activityRefreshing,
+    refresh: refreshActivityFeed,
+    logBadge,
+    logPost,
+    upsertPlaceCard,
+  } = useActivityFeed(user?.id ?? null, followingIds);
 
   const [showBucketlistOverlay, setShowBucketlistOverlay] = useState(false);
   const [showFriendBucketlist, setShowFriendBucketlist] = useState(false);
@@ -144,7 +177,8 @@ export default function App() {
   const [selectedFeature, setSelectedFeature] = useState<GeoJsonFeature | null>(null);
   const [selectedCity, setSelectedCity] = useState<CityPoint | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [showGallery, setShowGallery] = useState(false);
+  // Full-screen country activity page (Instagram-style post grid)
+  const [showActivity, setShowActivity] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('globe');
 
@@ -152,7 +186,7 @@ export default function App() {
   const handleTabChange = useCallback((tab: TabId) => {
     setActiveTab(tab);
     setViewingProfileId(null);
-    setShowGallery(false);
+    setShowActivity(false);
   }, []);
 
   // View a friend's map: load their places, switch to globe tab, close profile modal
@@ -247,7 +281,7 @@ export default function App() {
     setSelectedId(null);
     setSelectedFeature(null);
     setSelectedCity(null);
-    setShowGallery(false);
+    setShowActivity(false);
     setShowFriendBucketlist(false);
   }, [activeFriendId]);
 
@@ -306,11 +340,44 @@ export default function App() {
     globeRef.current?.flyTo(lat, lng);
   }, []);
 
+  // Feed → globe: user tapped an activity referencing a place. Switch to the
+  // globe tab and select the matching polygon (or city) so the info box opens.
+  // The `place_id` format matches what getPolygonId produces, e.g. "country:Japan".
+  const handleNavigateToPlace = useCallback(
+    (placeId: string, placeType: string) => {
+      setActiveTab('globe');
+      setShowActivity(false);
+      setViewingProfileId(null);
+
+      if (placeType === 'city') {
+        const city = allCities.find((c) => c.id === placeId);
+        if (city) {
+          setSelectedId(city.id);
+          setSelectedCity(city);
+          setSelectedFeature(null);
+          globeRef.current?.flyTo(city.lat, city.lng);
+        }
+        return;
+      }
+
+      // Find the polygon by id match. We check both country and state lists
+      // since 'state:Texas' vs 'country:USA' use the same id-building scheme.
+      const allPolygons: GeoJsonFeature[] = [...countries, ...subdivisions];
+      const match = allPolygons.find((p) => getPolygonId(p) === placeId);
+      if (match) {
+        setSelectedId(placeId);
+        setSelectedFeature(match);
+        setSelectedCity(null);
+      }
+    },
+    [allCities, countries, subdivisions],
+  );
+
   const handleClose = useCallback(() => {
     setSelectedId(null);
     setSelectedFeature(null);
     setSelectedCity(null);
-    setShowGallery(false);
+    setShowActivity(false);
   }, []);
 
   // --- Derive selected place info ---
@@ -339,60 +406,161 @@ export default function App() {
       : getPlace(selectedPlaceType, selectedPlaceId)
     : undefined;
 
-  // Load photos for the selected place
+  // Load posts for the selected country when the activity page opens.
+  // In friend view we target the friend's user_id so RLS grants read access.
   useEffect(() => {
-    if (!hasSelection) return;
-    if (isFriendView) {
-      loadFriendPhotos(selectedPlaceType, selectedPlaceId);
-    } else if (user) {
-      loadPhotos(selectedPlaceType, selectedPlaceId);
-    }
-  }, [hasSelection, isFriendView, user, selectedPlaceType, selectedPlaceId, loadPhotos, loadFriendPhotos]);
+    if (!showActivity || !hasSelection) return;
+    const targetUserId = isFriendView ? activeFriendId : user?.id ?? null;
+    if (!targetUserId) return;
+    loadPostsForPlace(targetUserId, selectedPlaceId);
+  }, [
+    showActivity,
+    hasSelection,
+    isFriendView,
+    activeFriendId,
+    user?.id,
+    selectedPlaceId,
+    loadPostsForPlace,
+  ]);
+
+  // Clear the in-memory post list when the activity page closes so stale
+  // posts from a previous country don't flash when reopening.
+  useEffect(() => {
+    if (!showActivity) clearPosts();
+  }, [showActivity, clearPosts]);
 
   // Friend info
   const activeFriendProfile = activeFriendId
     ? following.find((f) => f.following_id === activeFriendId)?.profile
     : null;
   const activeFriendName = activeFriendProfile
-    ? activeFriendProfile.username || activeFriendProfile.display_name || activeFriendProfile.email || 'Friend'
+    ? activeFriendProfile.username || activeFriendProfile.display_name || 'Friend'
     : null;
-
-  // Which photos/counts to show depends on mode
-  const panelPhotos = isFriendView ? friendPhotos : photos;
-  const panelPhotosLoading = isFriendView ? friendPhotosLoading : photosLoading;
 
   // Globe data: show friend's visited IDs when in friend view, otherwise own
   const globeVisitedIds = isFriendView ? friendVisitedIds : visitedIds;
   const globeVisitedVersion = isFriendView ? friendVersion : visitedVersion;
 
-  const handlePhotoUpload = useCallback(
-    (file: File) => uploadPhoto(selectedPlaceType, selectedPlaceId, file),
-    [uploadPhoto, selectedPlaceType, selectedPlaceId],
+  // Create a post from the activity page. Uploads files, creates the post
+  // row, then inserts a matching activity_feed row so followers see it.
+  const handleCreatePost = useCallback(
+    async (files: File[], caption: string): Promise<boolean> => {
+      if (!selectedPlaceId || !selectedPlaceName) return false;
+      const created = await createPost(selectedPlaceId, selectedPlaceName, files, caption);
+      if (!created) return false;
+      await logPost({
+        placeId: created.place_id,
+        placeName: created.place_name,
+        placeType: 'country',
+        postId: created.id,
+        photoPaths: created.photo_paths,
+        caption: created.caption,
+      });
+      return true;
+    },
+    [createPost, logPost, selectedPlaceId, selectedPlaceName],
   );
 
+  // Mark visited — auto-creates (never auto-updates) the initial feed card
+  // for this place. Dates land in metadata so the card can display them.
   const handleMarkVisited = useCallback(async (
-    notes: string,
     dates?: { startDate: string | null; endDate: string | null },
   ): Promise<boolean> => {
-    return markVisited(selectedPlaceType, selectedPlaceId, selectedPlaceName, notes, dates);
-  }, [markVisited, selectedPlaceType, selectedPlaceId, selectedPlaceName]);
+    const ok = await markVisited(selectedPlaceType, selectedPlaceId, selectedPlaceName, '', dates);
+    if (ok) {
+      upsertPlaceCard({
+        placeId: selectedPlaceId,
+        placeName: selectedPlaceName,
+        placeType: selectedPlaceType,
+        metadataPatch: {
+          visit_start_date: dates?.startDate ?? null,
+          visit_end_date: dates?.endDate ?? null,
+          ...(selectedCity ? { place_subtitle: selectedCity.country } : {}),
+        },
+      });
+    }
+    return ok;
+  }, [markVisited, upsertPlaceCard, selectedPlaceType, selectedPlaceId, selectedPlaceName, selectedCity]);
+
+  // Bucketlist adds no longer auto-post to the feed.
+  const addBucketlistItem = useCallback(
+    async (placeType: string, placeId: string, placeName: string) => {
+      return addBucketlistItemRaw(placeType, placeId, placeName);
+    },
+    [addBucketlistItemRaw],
+  );
+
+  // --- Badge detection ---
+  // Compute current country / continent counts from the user's visited places
+  // the same way the Achievements component does. When a tier is crossed, log
+  // an activity. We track previous tiers in refs so the first render (after
+  // hydrating places from the DB) doesn't spam-log stale badges.
+  const { ownCountryCount, ownContinentCount } = useMemo(() => {
+    const active = places.filter((p) => p.is_visited !== false);
+    const polys = active.filter(
+      (p) => p.place_type === 'country' || p.place_type === 'territory',
+    );
+    let cCount = 0;
+    const continents = new Set<string>();
+    for (const p of polys) {
+      const name = p.place_id.replace(/^(country|territory):/, '');
+      if (isUNMember(name)) {
+        cCount++;
+        const continent = COUNTRY_TO_CONTINENT[name];
+        if (continent) continents.add(continent);
+      }
+    }
+    return { ownCountryCount: cCount, ownContinentCount: continents.size };
+  }, [places]);
+
+  const prevWorldTier = useRef<number | null>(null);
+  const prevContinentTier = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const wTier = currentTier(ownCountryCount, WORLD_THRESHOLDS);
+    const cTier = currentTier(ownContinentCount, CONTINENT_THRESHOLDS);
+
+    // First time we see this user's counts — just seed the refs, don't log
+    if (prevWorldTier.current === null) {
+      prevWorldTier.current = wTier;
+      prevContinentTier.current = cTier;
+      return;
+    }
+
+    if (wTier > (prevWorldTier.current ?? -1)) {
+      logBadge({ badgeName: WORLD_TIER_NAMES[wTier], badgeCategory: 'World Traveler' });
+    }
+    if (cTier > (prevContinentTier.current ?? -1)) {
+      logBadge({ badgeName: CONTINENT_TIER_NAMES[cTier], badgeCategory: 'Continents' });
+    }
+    prevWorldTier.current = wTier;
+    prevContinentTier.current = cTier;
+  }, [ownCountryCount, ownContinentCount, user, logBadge]);
 
   const handleRemoveVisited = useCallback(async () => {
     await removeVisited(selectedPlaceType, selectedPlaceId);
   }, [removeVisited, selectedPlaceType, selectedPlaceId]);
 
-  const handleNotesChange = useCallback(
-    async (notes: string): Promise<boolean> => {
-      return updateNotes(selectedPlaceType, selectedPlaceId, notes);
-    },
-    [updateNotes, selectedPlaceType, selectedPlaceId],
-  );
-
+  // Date edits keep the feed card's metadata in sync so the dates shown on
+  // bumped cards stay accurate — but date edits alone never bump the feed.
   const handleUpdateDates = useCallback(
     async (dates: { startDate: string | null; endDate: string | null }): Promise<boolean> => {
-      return updateDates(selectedPlaceType, selectedPlaceId, dates);
+      const ok = await updateDates(selectedPlaceType, selectedPlaceId, dates);
+      if (ok) {
+        upsertPlaceCard({
+          placeId: selectedPlaceId,
+          placeName: selectedPlaceName,
+          placeType: selectedPlaceType,
+          metadataPatch: {
+            visit_start_date: dates.startDate,
+            visit_end_date: dates.endDate,
+          },
+        });
+      }
+      return ok;
     },
-    [updateDates, selectedPlaceType, selectedPlaceId],
+    [updateDates, upsertPlaceCard, selectedPlaceType, selectedPlaceId, selectedPlaceName],
   );
 
   if (globeError) {
@@ -424,32 +592,34 @@ export default function App() {
     <>
       {/* Globe is always mounted so it keeps state, but hidden when on profile tab */}
       <div style={{ display: activeTab === 'globe' ? 'contents' : 'none' }}>
-        <Globe
-          ref={globeRef}
-          polygons={polygons}
-          cities={visibleCities}
-          selectedId={selectedId}
-          visitedIds={globeVisitedIds}
-          visitedVersion={globeVisitedVersion}
-          visitedColor={isFriendView ? 'purple' : 'orange'}
-          zoomLevel={zoomLevel}
-          width={dimensions.width}
-          height={dimensions.height}
-          onPolygonClick={handlePolygonClick}
-          onCityClick={handleCityClick}
-          onZoomChange={handleZoomChange}
-          onGlobeClick={handleClose}
-          bucketlistIds={
-            isFriendView
-              ? (showFriendBucketlist ? friendBucketlistIds : undefined)
-              : (showBucketlistOverlay ? bucketlistIds : undefined)
-          }
-          bucketlistVersion={
-            isFriendView
-              ? (showFriendBucketlist ? friendVersion : 0)
-              : (showBucketlistOverlay ? bucketlistVersion : 0)
-          }
-        />
+        <Suspense fallback={<GlobeLoader />}>
+          <Globe
+            ref={globeRef}
+            polygons={polygons}
+            cities={visibleCities}
+            selectedId={selectedId}
+            visitedIds={globeVisitedIds}
+            visitedVersion={globeVisitedVersion}
+            visitedColor={isFriendView ? 'purple' : 'orange'}
+            zoomLevel={zoomLevel}
+            width={dimensions.width}
+            height={dimensions.height}
+            onPolygonClick={handlePolygonClick}
+            onCityClick={handleCityClick}
+            onZoomChange={handleZoomChange}
+            onGlobeClick={handleClose}
+            bucketlistIds={
+              isFriendView
+                ? (showFriendBucketlist ? friendBucketlistIds : undefined)
+                : (showBucketlistOverlay ? bucketlistIds : undefined)
+            }
+            bucketlistVersion={
+              isFriendView
+                ? (showFriendBucketlist ? friendVersion : 0)
+                : (showBucketlistOverlay ? bucketlistVersion : 0)
+            }
+          />
+        </Suspense>
         <SearchBar
           cities={allCities}
           polygons={polygons}
@@ -460,7 +630,6 @@ export default function App() {
           onAddToBucketlist={user ? (t, id, n) => { addBucketlistItem(t, id, n); } : undefined}
           onRemoveFromBucketlist={user ? (id) => { removeBucketlistItem(id); } : undefined}
         />
-        <ZoomIndicator level={zoomLevel} />
 
         {/* "Back to My Map" banner when viewing a friend's map */}
         {isFriendView && activeFriendName && (
@@ -475,15 +644,18 @@ export default function App() {
 
         {user && (
           <>
-            <BucketlistPanel
-              items={bucketlistItems}
-              loading={bucketlistLoading}
-              showOverlay={showBucketlistOverlay}
-              onToggleOverlay={() => setShowBucketlistOverlay((v) => !v)}
-              onRemove={removeBucketlistItem}
-            />
+            {/* Bucketlist pail icon must not appear over the activity page */}
+            {!showActivity && (
+              <BucketlistPanel
+                items={bucketlistItems}
+                loading={bucketlistLoading}
+                showOverlay={showBucketlistOverlay}
+                onToggleOverlay={() => setShowBucketlistOverlay((v) => !v)}
+                onRemove={removeBucketlistItem}
+              />
+            )}
             {/* Friend overlay selector — "View friend's map" stays on globe tab */}
-            {!showGallery && (
+            {!showActivity && (
               <FriendOverlay
                 following={following}
                 activeFriendId={activeFriendId}
@@ -497,7 +669,9 @@ export default function App() {
           </>
         )}
 
-        {hasSelection && (
+        {/* Info box hides while the country activity page is open so the
+            user never sees both at once. Selection is preserved. */}
+        {hasSelection && !showActivity && (
           isFriendView ? (
             <CountryPanel
               country={selectedFeature}
@@ -506,11 +680,9 @@ export default function App() {
               isLoggedIn={Boolean(user)}
               onMarkVisited={async () => false}
               onRemoveVisited={() => {}}
-              onNotesChange={async () => false}
               onUpdateDates={async () => false}
               onClose={handleClose}
-              photoCount={panelPhotos.length}
-              onOpenGallery={() => setShowGallery(true)}
+              onOpenActivity={() => setShowActivity(true)}
               friendViewMode={true}
               friendName={activeFriendName}
             />
@@ -522,11 +694,9 @@ export default function App() {
               isLoggedIn={Boolean(user)}
               onMarkVisited={handleMarkVisited}
               onRemoveVisited={handleRemoveVisited}
-              onNotesChange={handleNotesChange}
               onUpdateDates={handleUpdateDates}
               onClose={handleClose}
-              photoCount={panelPhotos.length}
-              onOpenGallery={() => setShowGallery(true)}
+              onOpenActivity={() => setShowActivity(true)}
               isInBucketlist={isInBucketlist(selectedPlaceId)}
               onAddToBucketlist={() => addBucketlistItem(selectedPlaceType, selectedPlaceId, selectedPlaceName)}
               onRemoveFromBucketlist={() => removeBucketlistItem(selectedPlaceId)}
@@ -534,16 +704,18 @@ export default function App() {
           )
         )}
 
-        {showGallery && hasSelection && (
-          <PhotoGallery
-            countryName={isFriendView ? `${activeFriendName} — ${selectedPlaceName}` : selectedPlaceName}
-            photos={panelPhotos}
-            loading={panelPhotosLoading}
-            uploading={isFriendView ? false : photosUploading}
-            onUpload={isFriendView ? async () => false : handlePhotoUpload}
-            onDelete={isFriendView ? async () => false : deletePhoto}
-            onClose={() => setShowGallery(false)}
+        {showActivity && hasSelection && (
+          <CountryActivity
+            countryName={selectedPlaceName}
+            posts={posts}
+            loading={postsLoading}
+            creating={postsCreating}
+            deleting={postsDeleting}
             readOnly={isFriendView}
+            friendName={isFriendView ? activeFriendName : null}
+            onClose={() => setShowActivity(false)}
+            onCreatePost={handleCreatePost}
+            onDeletePost={deletePost}
           />
         )}
       </div>
@@ -558,6 +730,19 @@ export default function App() {
           onFollow={follow}
           onUnfollow={unfollow}
           isFollowing={isFollowing}
+          onViewProfile={setViewingProfileId}
+        />
+      )}
+
+      {/* Feed tab */}
+      {activeTab === 'feed' && user && (
+        <FeedTab
+          feed={activityFeed}
+          loading={activityLoading}
+          refreshing={activityRefreshing}
+          followingCount={following.length}
+          onRefresh={refreshActivityFeed}
+          onNavigateToPlace={handleNavigateToPlace}
           onViewProfile={setViewingProfileId}
         />
       )}
@@ -598,7 +783,8 @@ export default function App() {
       {viewingProfileId && (
         <ProfileView
           userId={viewingProfileId}
-          isFollowing={isFollowing(viewingProfileId)}
+          currentUserId={user?.id ?? null}
+          isFollowing={isFollowing}
           onFollow={follow}
           onUnfollow={unfollow}
           onClose={() => setViewingProfileId(null)}

@@ -125,11 +125,11 @@ export default function ProfileTab({
 
           <div style={styles.profileActions}>
             {!editing && (
-              <button style={styles.editBtn} onClick={() => setEditing(true)}>
+              <button className="btn-press" style={styles.editBtn} onClick={() => setEditing(true)}>
                 Edit
               </button>
             )}
-            <button style={styles.logoutBtn} onClick={onSignOut}>
+            <button className="btn-press" style={styles.logoutBtn} onClick={onSignOut}>
               Log out
             </button>
           </div>
@@ -171,7 +171,7 @@ export default function ProfileTab({
             )}
 
             <div style={styles.editBtnRow}>
-              <button style={styles.cancelBtn} onClick={() => {
+              <button className="btn-press" style={styles.cancelBtn} onClick={() => {
                 setEditing(false);
                 setUsername(profile.username ?? '');
                 setBio(profile.bio ?? '');
@@ -179,6 +179,7 @@ export default function ProfileTab({
                 Cancel
               </button>
               <button
+                className="btn-press"
                 style={{
                   ...styles.saveBtn,
                   ...(saveStatus === 'saved' ? styles.saveBtnSaved : {}),
@@ -219,23 +220,25 @@ const styles: Record<string, React.CSSProperties> = {
   scrollArea: {
     height: '100%',
     overflowY: 'auto' as const,
-    padding: '1.5rem',
-    paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
+    padding: '2.25rem 1.75rem 2.5rem',
+    paddingTop: 'calc(2.25rem + env(safe-area-inset-top, 0px))',
     maxWidth: '480px',
     margin: '0 auto',
+    animation: 'tabFadeIn 260ms ease-out',
   },
 
   // --- Profile Header ---
   profileHeader: {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: '1rem',
-    paddingBottom: '1.25rem',
-    borderBottom: '1px solid rgba(100, 180, 255, 0.1)',
+    gap: '1.25rem',
+    paddingBottom: '2rem',
+    marginBottom: '0.5rem',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
   },
   avatar: {
-    width: '72px',
-    height: '72px',
+    width: '84px',
+    height: '84px',
     borderRadius: '50%',
     background: 'rgba(100, 180, 255, 0.15)',
     backgroundSize: 'cover',
@@ -270,18 +273,19 @@ const styles: Record<string, React.CSSProperties> = {
   },
   displayName: {
     margin: 0,
-    fontSize: '1.1rem',
-    fontWeight: 600,
-    color: '#fff',
+    fontSize: '1.35rem',
+    fontWeight: 700,
+    color: 'rgba(255, 255, 255, 0.92)',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap' as const,
+    letterSpacing: '-0.01em',
   },
   bioText: {
-    margin: '0.3rem 0 0',
-    fontSize: '0.8rem',
+    margin: '0.5rem 0 0',
+    fontSize: '0.85rem',
     color: 'rgba(255, 255, 255, 0.5)',
-    lineHeight: 1.4,
+    lineHeight: 1.55,
     whiteSpace: 'pre-wrap' as const,
     wordBreak: 'break-word' as const,
   },
@@ -296,21 +300,22 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   editBtn: {
-    padding: '0.3rem 0.75rem',
+    padding: '0.4rem 0.95rem',
     background: 'rgba(100, 180, 255, 0.15)',
     border: '1px solid rgba(100, 180, 255, 0.3)',
-    borderRadius: '6px',
-    color: 'rgba(100, 180, 255, 0.9)',
+    borderRadius: '999px',
+    color: 'rgba(100, 180, 255, 0.95)',
     fontSize: '0.75rem',
+    fontWeight: 500,
     cursor: 'pointer',
     fontFamily: 'inherit',
   },
   logoutBtn: {
-    padding: '0.3rem 0.75rem',
+    padding: '0.4rem 0.95rem',
     background: 'none',
     border: '1px solid rgba(255, 255, 255, 0.15)',
-    borderRadius: '6px',
-    color: 'rgba(255, 255, 255, 0.45)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.5)',
     fontSize: '0.72rem',
     cursor: 'pointer',
     fontFamily: 'inherit',
@@ -318,8 +323,8 @@ const styles: Record<string, React.CSSProperties> = {
 
   // --- Inline Edit Section ---
   editSection: {
-    padding: '1rem 0',
-    borderBottom: '1px solid rgba(100, 180, 255, 0.1)',
+    padding: '1.5rem 0 2rem',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
   },
   label: {
     display: 'flex',
@@ -332,11 +337,11 @@ const styles: Record<string, React.CSSProperties> = {
   },
   input: {
     width: '100%',
-    padding: '0.55rem 0.75rem',
+    padding: '0.65rem 0.9rem',
     background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '8px',
-    color: '#fff',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '14px',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.85rem',
     fontFamily: 'inherit',
     outline: 'none',
@@ -344,12 +349,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   textarea: {
     width: '100%',
-    minHeight: '70px',
-    padding: '0.55rem 0.75rem',
+    minHeight: '80px',
+    padding: '0.65rem 0.9rem',
     background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '8px',
-    color: '#fff',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '14px',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.85rem',
     fontFamily: 'inherit',
     outline: 'none',
@@ -378,24 +383,25 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cancelBtn: {
     flex: 1,
-    padding: '0.55rem',
+    padding: '0.7rem',
     background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-    borderRadius: '8px',
-    color: 'rgba(255, 255, 255, 0.5)',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: '0.82rem',
+    fontWeight: 500,
     cursor: 'pointer',
     fontFamily: 'inherit',
   },
   saveBtn: {
     flex: 1,
-    padding: '0.55rem',
-    background: 'rgba(100, 180, 255, 0.2)',
-    border: '1px solid rgba(100, 180, 255, 0.3)',
-    borderRadius: '8px',
-    color: '#fff',
+    padding: '0.7rem',
+    background: 'rgba(100, 180, 255, 0.22)',
+    border: '1px solid rgba(100, 180, 255, 0.38)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.92)',
     fontSize: '0.82rem',
-    fontWeight: 500,
+    fontWeight: 600,
     cursor: 'pointer',
     fontFamily: 'inherit',
   },

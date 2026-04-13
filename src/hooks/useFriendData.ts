@@ -1,21 +1,19 @@
 import { useState, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import type { VisitedPlace } from './useTravelData';
-import type { TravelPhoto } from './useTravelPhotos';
 import type { BucketlistItem } from './useBucketlist';
 
-const SIGNED_URL_EXPIRY = 3600;
-
 /**
- * Hook for loading a friend's travel data (visited places and photos).
+ * Hook for loading a friend's travel data (visited places and bucketlist).
  * RLS policies control access — the friend must be public or followed.
+ *
+ * Friend posts are loaded separately via usePosts.loadPostsForPlace(friendId),
+ * which handles its own state and signed URLs.
  */
 export function useFriendData() {
   const [friendPlaces, setFriendPlaces] = useState<VisitedPlace[]>([]);
   const [friendVisitedIds, setFriendVisitedIds] = useState<Set<string>>(new Set());
-  const [friendPhotos, setFriendPhotos] = useState<TravelPhoto[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
-  const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [activeFriendId, setActiveFriendId] = useState<string | null>(null);
   const [friendBucketlistIds, setFriendBucketlistIds] = useState<Set<string>>(new Set());
   // Version counter — tells the Globe to re-evaluate color accessors
@@ -78,7 +76,6 @@ export function useFriendData() {
   const clearFriend = useCallback(() => {
     setFriendPlaces([]);
     setFriendVisitedIds(new Set());
-    setFriendPhotos([]);
     setFriendBucketlistIds(new Set());
     setActiveFriendId(null);
     setVersion((v) => v + 1);
@@ -98,69 +95,15 @@ export function useFriendData() {
     [friendPlaces],
   );
 
-  // Load photos for a specific place belonging to the active friend
-  const loadFriendPhotos = useCallback(
-    async (placeType: string, placeId: string) => {
-      if (!activeFriendId || !isSupabaseConfigured) {
-        setFriendPhotos([]);
-        return;
-      }
-      setLoadingPhotos(true);
-
-      const { data, error } = await supabase
-        .from('travel_photos')
-        .select('*')
-        .eq('user_id', activeFriendId)
-        .eq('place_type', placeType)
-        .eq('place_id', placeId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('[FriendData] loadFriendPhotos ERROR:', error.message);
-        setFriendPhotos([]);
-        setLoadingPhotos(false);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        setFriendPhotos([]);
-        setLoadingPhotos(false);
-        return;
-      }
-
-      // Generate signed URLs
-      const paths = data.map((p: TravelPhoto) => p.file_path);
-      const { data: signedUrls, error: urlErr } = await supabase.storage
-        .from('travel-photos')
-        .createSignedUrls(paths, SIGNED_URL_EXPIRY);
-
-      if (urlErr) {
-        console.error('[FriendData] createSignedUrls ERROR:', urlErr.message);
-      }
-
-      const photosWithUrls = data.map((photo: TravelPhoto, i: number) => ({
-        ...photo,
-        url: signedUrls?.[i]?.signedUrl ?? undefined,
-      }));
-
-      setFriendPhotos(photosWithUrls);
-      setLoadingPhotos(false);
-    },
-    [activeFriendId],
-  );
-
   return {
     friendPlaces,
     friendVisitedIds,
     friendBucketlistIds,
-    friendPhotos,
     activeFriendId,
     version,
     loadingPlaces,
-    loadingPhotos,
     loadFriendPlaces,
     clearFriend,
     getFriendPlace,
-    loadFriendPhotos,
   };
 }

@@ -37,6 +37,10 @@ export default function BucketlistPanel({
   const [isOpen, setIsOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Cities are no longer addable to the bucketlist; hide any legacy city
+  // entries that may still exist in the database.
+  const visibleItems = items.filter((item) => item.place_type !== 'city');
+
   const handleRemove = async (placeId: string) => {
     setRemovingId(placeId);
     await onRemove(placeId);
@@ -47,13 +51,14 @@ export default function BucketlistPanel({
     <>
       {/* Pail icon button */}
       <button
+        className="btn-press"
         style={styles.iconBtn}
         onClick={() => setIsOpen((o) => !o)}
         aria-label="Bucketlist"
       >
         <PailIcon size={16} />
-        {items.length > 0 && (
-          <span style={styles.badge}>{items.length}</span>
+        {visibleItems.length > 0 && (
+          <span style={styles.badge}>{visibleItems.length}</span>
         )}
       </button>
 
@@ -63,12 +68,12 @@ export default function BucketlistPanel({
           <div style={styles.header}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
               <h3 style={styles.title}>Bucketlist</h3>
-              <span style={styles.count}>{items.length}/{BUCKETLIST_MAX}</span>
+              <span style={styles.count}>{visibleItems.length}/{BUCKETLIST_MAX}</span>
             </div>
-            <button style={styles.closeBtn} onClick={() => setIsOpen(false)}>✕</button>
+            <button className="btn-press" style={styles.closeBtn} onClick={() => setIsOpen(false)}>✕</button>
           </div>
 
-          {items.length >= BUCKETLIST_MAX && (
+          {visibleItems.length >= BUCKETLIST_MAX && (
             <div style={styles.fullMsg}>Bucketlist is full ({BUCKETLIST_MAX}/{BUCKETLIST_MAX})</div>
           )}
 
@@ -93,13 +98,14 @@ export default function BucketlistPanel({
           <div style={styles.list}>
             {loading ? (
               <p style={styles.emptyText}>Loading...</p>
-            ) : items.length === 0 ? (
+            ) : visibleItems.length === 0 ? (
               <p style={styles.emptyText}>No places in your bucketlist yet</p>
             ) : (
-              items.map((item) => (
+              visibleItems.map((item) => (
                 <div key={item.id} style={styles.item}>
                   <span style={styles.itemName}>{item.place_name}</span>
                   <button
+                    className="btn-press"
                     style={styles.removeBtn}
                     onClick={() => handleRemove(item.place_id)}
                     disabled={removingId === item.place_id}
@@ -123,14 +129,16 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'fixed',
     top: 'calc(1rem + env(safe-area-inset-top, 0px))',
     right: '1rem',
-    width: '34px',
-    height: '34px',
+    width: '36px',
+    height: '36px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(15, 15, 25, 0.7)',
-    border: `1px solid ${ACCENT} 0.2)`,
-    borderRadius: '8px',
+    background: 'rgba(16, 18, 28, 0.55)',
+    backdropFilter: 'blur(20px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '999px',
     cursor: 'pointer',
     zIndex: 1000,
     padding: 0,
@@ -143,7 +151,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: '16px',
     borderRadius: '8px',
     background: `${ACCENT} 0.85)`,
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.92)',
     fontSize: '0.6rem',
     fontWeight: 700,
     display: 'flex',
@@ -157,14 +165,18 @@ const styles: Record<string, React.CSSProperties> = {
     right: '1rem',
     width: '260px',
     maxHeight: 'calc(100vh - 7rem - env(safe-area-inset-top, 0px))',
-    background: 'rgba(15, 15, 25, 0.95)',
-    backdropFilter: 'blur(12px)',
-    border: `1px solid ${ACCENT} 0.2)`,
-    borderRadius: '12px',
+    background: 'rgba(16, 18, 28, 0.62)',
+    backdropFilter: 'blur(20px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '20px',
     padding: '1rem',
     zIndex: 1000,
     display: 'flex',
     flexDirection: 'column',
+    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.35)',
+    transformOrigin: 'top right',
+    animation: 'fadeScaleIn 0.2s ease-out',
   },
   header: {
     display: 'flex',
@@ -272,11 +284,11 @@ const styles: Record<string, React.CSSProperties> = {
   removeBtn: {
     background: 'none',
     border: 'none',
-    color: 'rgba(255, 255, 255, 0.3)',
+    color: 'rgba(255, 255, 255, 0.35)',
     fontSize: '0.75rem',
     cursor: 'pointer',
-    padding: '0.2rem 0.35rem',
-    borderRadius: '4px',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '999px',
     lineHeight: 1,
     flexShrink: 0,
   },

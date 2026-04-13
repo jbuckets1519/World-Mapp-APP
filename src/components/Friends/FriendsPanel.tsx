@@ -95,7 +95,7 @@ export default function FriendsPanel({
 
   // Display name helper
   const displayUser = (profile: UserProfile): string => {
-    return profile.username || profile.display_name || profile.email || 'Unknown user';
+    return profile.username || profile.display_name || 'Unknown user';
   };
 
   if (!open) {
@@ -138,9 +138,6 @@ export default function FriendsPanel({
               <div key={user.id} style={styles.userRow}>
                 <div style={styles.userInfo} onClick={() => onViewProfile?.(user.id)} role="button">
                   <div style={styles.userNameLink}>{displayUser(user)}</div>
-                  {user.email && user.username && (
-                    <div style={styles.userEmail}>{user.email}</div>
-                  )}
                 </div>
                 {isFollowing(user.id) ? (
                   <span style={styles.followingTag}>Following</span>
@@ -190,9 +187,6 @@ export default function FriendsPanel({
               <div key={rel.id} style={styles.userRow}>
                 <div style={styles.userInfo} onClick={() => onViewProfile?.(rel.following_id)} role="button">
                   <div style={styles.userNameLink}>{displayUser(rel.profile)}</div>
-                  {rel.profile.email && rel.profile.username && (
-                    <div style={styles.userEmail}>{rel.profile.email}</div>
-                  )}
                 </div>
                 <button
                   style={styles.unfollowBtn}
@@ -211,9 +205,6 @@ export default function FriendsPanel({
             <div key={rel.id} style={styles.userRow}>
               <div style={styles.userInfo} onClick={() => onViewProfile?.(rel.follower_id)} role="button">
                 <div style={styles.userNameLink}>{displayUser(rel.profile)}</div>
-                {rel.profile.email && rel.profile.username && (
-                  <div style={styles.userEmail}>{rel.profile.email}</div>
-                )}
               </div>
               {/* Show follow-back button if not already following them */}
               {!isFollowing(rel.follower_id) ? (
@@ -291,7 +282,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   title: {
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.95rem',
     fontWeight: 600,
     margin: 0,
@@ -316,7 +307,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(255, 255, 255, 0.06)',
     border: '1px solid rgba(100, 180, 255, 0.15)',
     borderRadius: '8px',
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.8rem',
     fontFamily: 'inherit',
     outline: 'none',
@@ -363,7 +354,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   userName: {
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.82rem',
     fontWeight: 500,
     overflow: 'hidden',

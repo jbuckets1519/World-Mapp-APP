@@ -67,6 +67,7 @@ export default function AuthOverlay({ onSignIn, onSignUp }: AuthOverlayProps) {
             activate your account, then log in.
           </p>
           <button
+            className="btn-press"
             style={styles.button}
             onClick={() => {
               setSignUpSuccess(false);
@@ -93,6 +94,7 @@ export default function AuthOverlay({ onSignIn, onSignUp }: AuthOverlayProps) {
                 Check your email for a reset link. We sent it to <strong>{email}</strong>.
               </p>
               <button
+                className="btn-press"
                 style={styles.button}
                 onClick={() => {
                   switchMode('login');
@@ -117,7 +119,7 @@ export default function AuthOverlay({ onSignIn, onSignUp }: AuthOverlayProps) {
                   style={styles.input}
                 />
                 {error && <p style={styles.error}>{error}</p>}
-                <button type="submit" disabled={submitting} style={styles.button}>
+                <button className="btn-press" type="submit" disabled={submitting} style={styles.button}>
                   {submitting ? '...' : 'Send reset link'}
                 </button>
               </form>
@@ -164,7 +166,7 @@ export default function AuthOverlay({ onSignIn, onSignUp }: AuthOverlayProps) {
             </button>
           )}
           {error && <p style={styles.error}>{error}</p>}
-          <button type="submit" disabled={submitting} style={styles.button}>
+          <button className="btn-press" type="submit" disabled={submitting} style={styles.button}>
             {submitting
               ? '...'
               : mode === 'signup'
@@ -199,38 +201,42 @@ const styles: Record<string, React.CSSProperties> = {
   card: {
     width: '340px',
     maxWidth: 'calc(100vw - 2rem)',
-    background: 'rgba(15, 15, 25, 0.95)',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '14px',
+    background: 'rgba(16, 18, 28, 0.72)',
+    backdropFilter: 'blur(24px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '22px',
     padding: '2rem',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+    animation: 'fadeScaleIn 0.22s ease-out',
   },
   title: {
     margin: '0 0 1.25rem',
-    fontSize: '1.3rem',
-    fontWeight: 600,
-    color: '#fff',
+    fontSize: '1.4rem',
+    fontWeight: 700,
+    color: 'rgba(255, 255, 255, 0.92)',
     textAlign: 'center',
+    letterSpacing: '-0.01em',
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: '0.9rem',
-    lineHeight: 1.5,
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: '0.88rem',
+    lineHeight: 1.55,
     textAlign: 'center',
     margin: '0 0 1.25rem',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem',
+    gap: '0.85rem',
   },
   input: {
     width: '100%',
-    padding: '0.7rem 0.85rem',
+    padding: '0.85rem 1.1rem',
     background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '8px',
-    color: '#fff',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.9rem',
     fontFamily: 'inherit',
     outline: 'none',
@@ -238,13 +244,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
   button: {
     width: '100%',
-    padding: '0.7rem',
-    background: 'rgba(100, 180, 255, 0.2)',
-    border: '1px solid rgba(100, 180, 255, 0.3)',
-    borderRadius: '8px',
-    color: '#fff',
+    padding: '0.85rem',
+    background: 'rgba(100, 180, 255, 0.22)',
+    border: '1px solid rgba(100, 180, 255, 0.38)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.95)',
     fontSize: '0.9rem',
-    fontWeight: 500,
+    fontWeight: 600,
     cursor: 'pointer',
     fontFamily: 'inherit',
   },

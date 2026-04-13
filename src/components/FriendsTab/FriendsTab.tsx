@@ -65,7 +65,7 @@ export default function FriendsTab({
   }, [onUnfollow]);
 
   const displayUser = (p: UserProfile): string => {
-    return p.username || p.display_name || p.email || 'Unknown user';
+    return p.username || p.display_name || 'Unknown user';
   };
 
   return (
@@ -88,14 +88,12 @@ export default function FriendsTab({
               <div key={user.id} style={styles.userRow}>
                 <div style={styles.userInfo} onClick={() => onViewProfile(user.id)} role="button">
                   <div style={styles.userNameLink}>{displayUser(user)}</div>
-                  {user.email && user.username && (
-                    <div style={styles.userEmail}>{user.email}</div>
-                  )}
                 </div>
                 {isFollowing(user.id) ? (
                   <span style={styles.followingTag}>Following</span>
                 ) : (
                   <button
+                    className="btn-press"
                     style={styles.followBtn}
                     onClick={() => handleFollow(user.id)}
                     disabled={actionLoading === user.id}
@@ -114,12 +112,14 @@ export default function FriendsTab({
         {/* Following / Followers tabs */}
         <div style={styles.tabs}>
           <button
+            className="btn-press"
             style={{ ...styles.tab, ...(friendTab === 'following' ? styles.tabActive : {}) }}
             onClick={() => setFriendTab('following')}
           >
             Following ({following.length})
           </button>
           <button
+            className="btn-press"
             style={{ ...styles.tab, ...(friendTab === 'followers' ? styles.tabActive : {}) }}
             onClick={() => setFriendTab('followers')}
           >
@@ -139,11 +139,9 @@ export default function FriendsTab({
                 <div key={rel.id} style={styles.userRow}>
                   <div style={styles.userInfo} onClick={() => onViewProfile(rel.following_id)} role="button">
                     <div style={styles.userNameLink}>{displayUser(rel.profile)}</div>
-                    {rel.profile.email && rel.profile.username && (
-                      <div style={styles.userEmail}>{rel.profile.email}</div>
-                    )}
                   </div>
                   <button
+                    className="btn-press"
                     style={styles.unfollowBtn}
                     onClick={() => handleUnfollow(rel.following_id)}
                     disabled={actionLoading === rel.following_id}
@@ -160,12 +158,10 @@ export default function FriendsTab({
               <div key={rel.id} style={styles.userRow}>
                 <div style={styles.userInfo} onClick={() => onViewProfile(rel.follower_id)} role="button">
                   <div style={styles.userNameLink}>{displayUser(rel.profile)}</div>
-                  {rel.profile.email && rel.profile.username && (
-                    <div style={styles.userEmail}>{rel.profile.email}</div>
-                  )}
                 </div>
                 {!isFollowing(rel.follower_id) ? (
                   <button
+                    className="btn-press"
                     style={styles.followBtn}
                     onClick={() => handleFollow(rel.follower_id)}
                     disabled={actionLoading === rel.follower_id}
@@ -197,52 +193,56 @@ const styles: Record<string, React.CSSProperties> = {
   scrollArea: {
     height: '100%',
     overflowY: 'auto' as const,
-    padding: '1.5rem',
-    paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
+    padding: '2.25rem 1.75rem 2.5rem',
+    paddingTop: 'calc(2.25rem + env(safe-area-inset-top, 0px))',
     maxWidth: '480px',
     margin: '0 auto',
+    animation: 'tabFadeIn 260ms ease-out',
   },
   heading: {
-    margin: '0 0 1rem',
-    fontSize: '1.2rem',
-    fontWeight: 600,
-    color: '#fff',
+    margin: '0 0 1.25rem',
+    fontSize: '1.35rem',
+    fontWeight: 700,
+    color: 'rgba(255, 255, 255, 0.92)',
+    letterSpacing: '-0.01em',
   },
   searchInput: {
     width: '100%',
-    padding: '0.5rem 0.75rem',
+    padding: '0.7rem 1rem',
     background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '8px',
-    color: '#fff',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.82rem',
     fontFamily: 'inherit',
     outline: 'none',
     boxSizing: 'border-box' as const,
   },
   searchResults: {
-    marginTop: '0.5rem',
-    marginBottom: '0.5rem',
+    marginTop: '0.75rem',
+    marginBottom: '0.75rem',
   },
   tabs: {
     display: 'flex',
-    marginTop: '0.75rem',
+    marginTop: '1.25rem',
     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
   },
   tab: {
     flex: 1,
-    padding: '0.55rem',
+    padding: '0.75rem',
     background: 'none',
     border: 'none',
     borderBottom: '2px solid transparent',
     color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: '0.78rem',
+    fontSize: '0.8rem',
+    fontWeight: 500,
     cursor: 'pointer',
     fontFamily: 'inherit',
+    transition: 'color 220ms ease-out, border-color 220ms ease-out',
   },
   tabActive: {
-    color: 'rgba(100, 180, 255, 0.9)',
-    borderBottomColor: 'rgba(100, 180, 255, 0.6)',
+    color: 'rgba(140, 200, 255, 0.95)',
+    borderBottomColor: 'rgba(140, 200, 255, 0.7)',
   },
   friendList: {
     padding: '0.5rem 0 1rem',
@@ -276,23 +276,25 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: 'nowrap' as const,
   },
   followBtn: {
-    padding: '0.25rem 0.65rem',
-    background: 'rgba(100, 180, 255, 0.15)',
-    border: '1px solid rgba(100, 180, 255, 0.3)',
-    borderRadius: '6px',
-    color: 'rgba(100, 180, 255, 0.9)',
+    padding: '0.4rem 1rem',
+    background: 'rgba(100, 180, 255, 0.18)',
+    border: '1px solid rgba(100, 180, 255, 0.35)',
+    borderRadius: '999px',
+    color: 'rgba(100, 180, 255, 0.95)',
     fontSize: '0.72rem',
+    fontWeight: 500,
     cursor: 'pointer',
     fontFamily: 'inherit',
     flexShrink: 0,
   },
   unfollowBtn: {
-    padding: '0.25rem 0.65rem',
+    padding: '0.4rem 1rem',
     background: 'rgba(255, 255, 255, 0.05)',
     border: '1px solid rgba(255, 255, 255, 0.15)',
-    borderRadius: '6px',
-    color: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.55)',
     fontSize: '0.72rem',
+    fontWeight: 500,
     cursor: 'pointer',
     fontFamily: 'inherit',
     flexShrink: 0,

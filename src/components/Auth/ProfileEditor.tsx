@@ -72,7 +72,7 @@ export default function ProfileEditor({
       <div style={styles.card} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
           <h2 style={styles.title}>Edit Profile</h2>
-          <button style={styles.closeBtn} onClick={onClose}>✕</button>
+          <button className="btn-press" style={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
 
         {/* Avatar */}
@@ -140,6 +140,7 @@ export default function ProfileEditor({
 
         {/* Save */}
         <button
+          className="btn-press"
           style={{
             ...styles.saveBtn,
             ...(saveStatus === 'saved' ? styles.saveBtnSaved : {}),
@@ -179,11 +180,14 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 'calc(100vw - 2rem)',
     maxHeight: 'calc(100vh - 4rem)',
     overflowY: 'auto' as const,
-    background: 'rgba(15, 15, 25, 0.97)',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '14px',
-    padding: '1.5rem',
+    background: 'rgba(16, 18, 28, 0.72)',
+    backdropFilter: 'blur(24px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '22px',
+    padding: '1.75rem',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+    animation: 'fadeScaleIn 0.22s ease-out',
   },
   header: {
     display: 'flex',
@@ -193,9 +197,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   title: {
     margin: 0,
-    fontSize: '1.15rem',
-    fontWeight: 600,
-    color: '#fff',
+    fontSize: '1.3rem',
+    fontWeight: 700,
+    color: 'rgba(255, 255, 255, 0.92)',
+    letterSpacing: '-0.01em',
   },
   closeBtn: {
     background: 'none',
@@ -252,11 +257,11 @@ const styles: Record<string, React.CSSProperties> = {
   },
   input: {
     width: '100%',
-    padding: '0.55rem 0.75rem',
+    padding: '0.7rem 0.95rem',
     background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '8px',
-    color: '#fff',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '14px',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.85rem',
     fontFamily: 'inherit',
     outline: 'none',
@@ -265,11 +270,11 @@ const styles: Record<string, React.CSSProperties> = {
   textarea: {
     width: '100%',
     minHeight: '80px',
-    padding: '0.55rem 0.75rem',
+    padding: '0.7rem 0.95rem',
     background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '8px',
-    color: '#fff',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '14px',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.85rem',
     fontFamily: 'inherit',
     outline: 'none',
@@ -301,14 +306,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   saveBtn: {
     width: '100%',
-    padding: '0.65rem',
-    marginTop: '1.25rem',
-    background: 'rgba(100, 180, 255, 0.2)',
-    border: '1px solid rgba(100, 180, 255, 0.3)',
-    borderRadius: '8px',
-    color: '#fff',
+    padding: '0.85rem',
+    marginTop: '1.5rem',
+    background: 'rgba(100, 180, 255, 0.22)',
+    border: '1px solid rgba(100, 180, 255, 0.38)',
+    borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.95)',
     fontSize: '0.85rem',
-    fontWeight: 500,
+    fontWeight: 600,
     cursor: 'pointer',
     fontFamily: 'inherit',
   },

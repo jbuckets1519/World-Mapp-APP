@@ -1,4 +1,4 @@
-const CACHE_NAME = 'world-mapp-v1';
+const CACHE_NAME = 'yuku-v2';
 
 // Assets to pre-cache on install
 const PRECACHE_URLS = [

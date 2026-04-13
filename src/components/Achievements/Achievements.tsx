@@ -12,16 +12,16 @@ const WORLD_THRESHOLDS = [1, 5, 15, 30, 50];
 const CONTINENT_THRESHOLDS = [1, 2, 4, 6, 7];
 
 // --- Color palettes (from the original HTML) ---
-const WORLD_PALETTE = {
+export const WORLD_PALETTE = {
   l: '#FAEEDA', m1: '#FAC775', m2: '#EF9F27', b: '#BA7517',
   d: '#633806', bg: '#412402', ls: '#EF9F27', lr: '#FAC775', la: '#EF9F27',
 };
-const CONTINENT_PALETTE = {
+export const CONTINENT_PALETTE = {
   l: '#E1F5EE', m1: '#9FE1CB', m2: '#1D9E75', b: '#0F6E56',
   d: '#085041', bg: '#04342C', ls: '#1D9E75', lr: '#9FE1CB', la: '#1D9E75',
 };
 
-type Palette = typeof WORLD_PALETTE;
+export type Palette = typeof WORLD_PALETTE;
 
 interface CategoryConfig {
   id: string;
@@ -36,7 +36,7 @@ interface CategoryConfig {
   thresholds: number[];
 }
 
-const CATEGORIES: CategoryConfig[] = [
+export const CATEGORIES: CategoryConfig[] = [
   {
     id: 'w', name: 'World Traveler',
     dotColor: '#BA7517', accentColor: '#EF9F27',
@@ -70,7 +70,7 @@ function computeProgress(count: number, thresholds: number[]) {
 
 // --- SVG Badge Generator (exact replica of the HTML version) ---
 
-function Badge({ tier, palette, size, locked }: {
+export function Badge({ tier, palette, size, locked }: {
   tier: number; palette: Palette; size: number; locked: boolean;
 }) {
   const f0 = locked ? '#1a1d26' : palette.l;
@@ -161,6 +161,26 @@ function Badge({ tier, palette, size, locked }: {
       {content}
     </svg>
   );
+}
+
+/**
+ * Look up the palette + tier index for a badge given the metadata stored on
+ * an activity_feed row. Used by the feed to render the correct SVG badge
+ * next to "X earned Y badge" entries. Returns null if no match is found
+ * (e.g. an old badge name that no longer exists).
+ */
+export function resolveBadge(
+  categoryName: string | undefined,
+  badgeName: string | undefined,
+): { palette: Palette; tier: number } | null {
+  if (!badgeName) return null;
+  const cat = categoryName
+    ? CATEGORIES.find((c) => c.name === categoryName)
+    : CATEGORIES.find((c) => c.tierNames.includes(badgeName));
+  if (!cat) return null;
+  const tier = cat.tierNames.indexOf(badgeName);
+  if (tier < 0) return null;
+  return { palette: cat.palette, tier };
 }
 
 // --- Main component ---
@@ -329,7 +349,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   cardName: {
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.92)',
     fontSize: '13px',
     fontWeight: 500,
     flex: 1,
@@ -393,7 +413,7 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 0,
   },
   tierName: {
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.92)',
     fontSize: '13px',
     fontWeight: 500,
   },

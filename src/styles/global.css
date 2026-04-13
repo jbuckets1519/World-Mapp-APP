@@ -15,7 +15,8 @@ body,
   overflow: hidden;
   background: #000;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #fff;
+  /* Softer off-white primary text for a less clinical feel */
+  color: rgba(255, 255, 255, 0.88);
   /* Prevent mobile browsers from interfering with touch gestures */
   touch-action: none;
   -webkit-touch-callout: none;
@@ -31,14 +32,50 @@ body,
   to   { opacity: 1; }
 }
 
-/* Info box slide-in animation */
+/* Info box slide-up animation (250ms ease-out per spec) */
 @keyframes panelSlideIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Search dropdown / bucketlist overlay fade+scale entrance */
+@keyframes fadeScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Smooth crossfade for tab content swaps */
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/*
+ * Reusable tactile press feedback — apply className="btn-press" to any
+ * button that should feel responsive to taps. The 0.97 scale with a quick
+ * 100ms snap is the Spotify/Airbnb standard for buttons that feel alive.
+ */
+.btn-press {
+  transition: transform 120ms ease-out, background 160ms ease-out,
+    border-color 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out;
+}
+.btn-press:active {
+  transform: scale(0.97);
+  transition-duration: 80ms;
+}
+/* If a button has an existing transform (e.g. tab indicator), don't override */
+.btn-press-notransform:active {
+  filter: brightness(0.92);
 }

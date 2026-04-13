@@ -1,6 +1,6 @@
 {
-  "name": "World Mapp",
-  "short_name": "World Mapp",
+  "name": "Yuku",
+  "short_name": "Yuku",
   "description": "Track your travels on an interactive 3D globe",
   "start_url": "/",
   "display": "standalone",

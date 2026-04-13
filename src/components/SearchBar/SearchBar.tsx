@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
-import { getPolygonId } from '../Globe/Globe';
+import { getPolygonId } from '../Globe/getPolygonId';
 import { isUNMember } from '../../data/un-members';
 import { PailIcon } from '../Bucketlist';
 
@@ -191,6 +191,7 @@ export default function SearchBar({
   if (!expanded) {
     return (
       <button
+        className="btn-press"
         style={styles.iconBtn}
         onClick={() => setExpanded(true)}
         aria-label="Search"
@@ -223,7 +224,7 @@ export default function SearchBar({
           onKeyDown={handleKeyDown}
           style={styles.input}
         />
-        <button style={styles.closeBtn} onClick={collapse} aria-label="Close search">
+        <button className="btn-press" style={styles.closeBtn} onClick={collapse} aria-label="Close search">
           ✕
         </button>
       </div>
@@ -250,7 +251,7 @@ export default function SearchBar({
                     <div style={styles.resultSubtitle}>{result.subtitle}</div>
                   </div>
                 </button>
-                {onAddToBucketlist && (
+                {onAddToBucketlist && result.type !== 'city' && (
                   <button
                     style={{
                       ...styles.bucketBtn,
@@ -277,26 +278,29 @@ export default function SearchBar({
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  // Collapsed icon button — sits below the zoom indicator
+  // Collapsed icon button — positioned at the top-left corner (where the
+  // zoom indicator previously lived).
   iconBtn: {
     position: 'fixed',
-    top: 'calc(3.2rem + env(safe-area-inset-top, 0px))',
+    top: 'calc(1rem + env(safe-area-inset-top, 0px))',
     left: '1rem',
-    width: '34px',
-    height: '34px',
+    width: '36px',
+    height: '36px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(15, 15, 25, 0.7)',
-    border: '1px solid rgba(100, 180, 255, 0.15)',
-    borderRadius: '8px',
+    background: 'rgba(16, 18, 28, 0.55)',
+    backdropFilter: 'blur(20px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '999px',
     cursor: 'pointer',
     zIndex: 20,
   },
   // Expanded container — same top-left position, z-index above city dot HTML elements
   container: {
     position: 'fixed',
-    top: 'calc(3.2rem + env(safe-area-inset-top, 0px))',
+    top: 'calc(1rem + env(safe-area-inset-top, 0px))',
     left: '1rem',
     width: '300px',
     maxWidth: 'calc(100vw - 2rem)',
@@ -306,17 +310,19 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
-    padding: '0.45rem 0.7rem',
-    background: 'rgba(15, 15, 25, 0.9)',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(100, 180, 255, 0.25)',
-    borderRadius: '10px',
+    padding: '0.55rem 0.9rem',
+    background: 'rgba(16, 18, 28, 0.62)',
+    backdropFilter: 'blur(20px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '999px',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
   },
   input: {
     flex: 1,
     background: 'none',
     border: 'none',
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.85rem',
     fontFamily: 'inherit',
     outline: 'none',
@@ -334,11 +340,16 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   dropdown: {
-    marginTop: '4px',
-    background: 'rgb(15, 15, 25)',
-    border: '1px solid rgba(100, 180, 255, 0.2)',
-    borderRadius: '10px',
+    marginTop: '6px',
+    background: 'rgba(16, 18, 28, 0.62)',
+    backdropFilter: 'blur(20px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '18px',
     overflow: 'hidden',
+    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.35)',
+    transformOrigin: 'top center',
+    animation: 'fadeScaleIn 0.18s ease-out',
   },
   resultItem: {
     display: 'flex',
@@ -347,7 +358,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0 0.85rem 0 0',
     background: 'none',
     border: 'none',
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.85rem',
   },
   resultClickArea: {
@@ -355,10 +366,10 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '0.6rem',
     flex: 1,
-    padding: '0.55rem 0.5rem 0.55rem 0.85rem',
+    padding: '0.65rem 0.5rem 0.65rem 0.95rem',
     background: 'none',
     border: 'none',
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.85rem',
     fontFamily: 'inherit',
     cursor: 'pointer',

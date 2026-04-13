@@ -287,7 +287,7 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(255, 255, 255, 0.06)',
     border: '1px solid rgba(100, 180, 255, 0.15)',
     borderRadius: '6px',
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.8rem',
     fontFamily: 'inherit',
     textAlign: 'left' as const,

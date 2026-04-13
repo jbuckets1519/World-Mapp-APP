@@ -122,7 +122,7 @@ export default function FriendOverlay({
       {open && (
         <div style={styles.dropdown}>
           {following.map((rel) => {
-            const name = rel.profile.display_name || rel.profile.email || 'Unknown';
+            const name = rel.profile.username || rel.profile.display_name || 'Unknown';
             const isActive = rel.following_id === activeFriendId;
             return (
               <button
@@ -192,13 +192,17 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   dropdown: {
-    marginTop: '4px',
-    background: 'rgba(15, 15, 25, 0.95)',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(100, 180, 255, 0.2)',
-    borderRadius: '10px',
+    marginTop: '6px',
+    background: 'rgba(16, 18, 28, 0.62)',
+    backdropFilter: 'blur(20px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '18px',
     overflow: 'hidden',
     minWidth: '180px',
+    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.35)',
+    transformOrigin: 'top left',
+    animation: 'fadeScaleIn 0.18s ease-out',
   },
   option: {
     display: 'flex',
@@ -208,7 +212,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 0.75rem',
     background: 'none',
     border: 'none',
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: '0.8rem',
     cursor: 'pointer',
     fontFamily: 'inherit',

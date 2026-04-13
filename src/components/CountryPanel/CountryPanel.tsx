@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import type { VisitedPlace, VisitDates } from '../../hooks/useTravelData';
 import CalendarPicker, { formatDateDisplay } from './CalendarPicker';
@@ -9,13 +9,13 @@ interface CountryPanelProps {
   city: CityPoint | null;
   visitedData: VisitedPlace | undefined;
   isLoggedIn: boolean;
-  onMarkVisited: (notes: string, dates?: VisitDates) => Promise<boolean>;
+  onMarkVisited: (dates?: VisitDates) => Promise<boolean>;
   onRemoveVisited: () => void;
-  onNotesChange: (notes: string) => Promise<boolean>;
   onUpdateDates: (dates: VisitDates) => Promise<boolean>;
   onClose: () => void;
-  photoCount: number;
-  onOpenGallery: () => void;
+  /** Opens the full-screen country activity page. Only shown for countries
+   *  (not cities/states). Parent decides what to render when triggered. */
+  onOpenActivity?: () => void;
   friendViewMode?: boolean;
   friendName?: string | null;
   /** Bucketlist controls */
@@ -41,11 +41,9 @@ export default function CountryPanel({
   isLoggedIn,
   onMarkVisited,
   onRemoveVisited,
-  onNotesChange,
   onUpdateDates,
   onClose,
-  photoCount,
-  onOpenGallery,
+  onOpenActivity,
   friendViewMode = false,
   friendName,
   isInBucketlist = false,
@@ -55,13 +53,13 @@ export default function CountryPanel({
   const displayName = city ? city.name : country?.properties.NAME ?? '';
   const subtitle = city ? city.country : null;
 
+  // "View Activity" only makes sense for country-level places. Cities and
+  // state/province polygons have no activity page (photos were migrated up
+  // to the country they belong to).
+  const isCountryLevel = Boolean(country && !city && !country?._isState);
+
   const isVisited = Boolean(visitedData?.is_visited);
   const hasData = Boolean(visitedData);
-
-  const [notes, setNotes] = useState(visitedData?.notes ?? '');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const notesRef = useRef(notes);
-  notesRef.current = notes;
 
   // Date state for "mark as visited" flow (new places)
   const [showNewDatePicker, setShowNewDatePicker] = useState(false);
@@ -76,8 +74,6 @@ export default function CountryPanel({
 
   // Sync state when selection or data changes
   useEffect(() => {
-    setNotes(visitedData?.notes ?? '');
-    setSaveStatus('idle');
     setShowNewDatePicker(false);
     setShowEditDates(false);
     setDateSaveStatus('idle');
@@ -91,7 +87,7 @@ export default function CountryPanel({
   const handleMarkVisitedClick = () => {
     if (hasData) {
       // Row already exists (was unvisited) — just flip the flag
-      onMarkVisited(visitedData!.notes);
+      onMarkVisited();
     } else {
       setShowNewDatePicker(true);
     }
@@ -100,12 +96,12 @@ export default function CountryPanel({
   const handleConfirmNewDate = async () => {
     const dates: VisitDates | undefined =
       (newFrom || newTo) ? { startDate: newFrom || null, endDate: newTo || null } : undefined;
-    const ok = await onMarkVisited(notesRef.current, dates);
+    const ok = await onMarkVisited(dates);
     if (ok) setShowNewDatePicker(false);
   };
 
   const handleSkipNewDate = async () => {
-    const ok = await onMarkVisited(notesRef.current);
+    const ok = await onMarkVisited();
     if (ok) setShowNewDatePicker(false);
   };
 
@@ -115,24 +111,6 @@ export default function CountryPanel({
     const ok = await onUpdateDates({ startDate: editFrom || null, endDate: editTo || null });
     setDateSaveStatus(ok ? 'saved' : 'error');
     setTimeout(() => setDateSaveStatus('idle'), 1500);
-  };
-
-  const handleSaveNotes = async () => {
-    const currentNotes = notesRef.current;
-    setSaveStatus('saving');
-    let ok: boolean;
-    if (visitedData) {
-      ok = await onNotesChange(currentNotes);
-    } else {
-      ok = await onMarkVisited(currentNotes);
-    }
-    if (ok) {
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 1500);
-    } else {
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    }
   };
 
   // --- Friend view mode ---
@@ -148,7 +126,7 @@ export default function CountryPanel({
             <h2 style={styles.name}>{displayName}</h2>
             {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
           </div>
-          <button style={styles.closeBtn} onClick={onClose} aria-label="Close panel">✕</button>
+          <button className="btn-press" style={styles.closeBtn} onClick={onClose} aria-label="Close panel">✕</button>
         </div>
 
         <div style={styles.friendBadge}>
@@ -160,18 +138,21 @@ export default function CountryPanel({
           <>
             <div style={styles.friendVisitedTag}>✓ {friendName} visited this place</div>
             {friendDateDisplay && <div style={styles.dateDisplay}>{friendDateDisplay}</div>}
-            {visitedData?.notes && (
-              <div style={styles.friendNotesBox}>
-                <div style={styles.friendNotesLabel}>Notes</div>
-                <p style={styles.friendNotesText}>{visitedData.notes}</p>
-              </div>
+            {isCountryLevel && onOpenActivity && (
+              <button className="btn-press" style={styles.friendGalleryBtn} onClick={onOpenActivity}>
+                View Activity
+              </button>
             )}
-            <button style={styles.friendGalleryBtn} onClick={onOpenGallery}>
-              Photo Gallery{photoCount > 0 ? ` (${photoCount})` : ''}
-            </button>
           </>
         ) : (
-          <p style={styles.friendNotVisited}>{friendName} hasn't visited this place</p>
+          <>
+            <p style={styles.friendNotVisited}>{friendName} hasn't visited this place</p>
+            {isCountryLevel && onOpenActivity && (
+              <button className="btn-press" style={styles.friendGalleryBtn} onClick={onOpenActivity}>
+                View Activity
+              </button>
+            )}
+          </>
         )}
       </div>
     );
@@ -186,8 +167,9 @@ export default function CountryPanel({
             <h2 style={styles.name}>{displayName}</h2>
             {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
           </div>
-          {isLoggedIn && onAddToBucketlist && (
+          {isLoggedIn && onAddToBucketlist && !city && (
             <button
+              className="btn-press"
               style={{
                 ...styles.pailBtn,
                 ...(isInBucketlist ? styles.pailBtnActive : {}),
@@ -200,7 +182,7 @@ export default function CountryPanel({
             </button>
           )}
         </div>
-        <button style={styles.closeBtn} onClick={onClose} aria-label="Close panel">✕</button>
+        <button className="btn-press" style={styles.closeBtn} onClick={onClose} aria-label="Close panel">✕</button>
       </div>
 
       {isLoggedIn ? (
@@ -208,6 +190,7 @@ export default function CountryPanel({
           {/* Visited toggle */}
           {!showNewDatePicker && (
             <button
+              className="btn-press"
               style={{
                 ...styles.visitedBtn,
                 ...(isVisited ? styles.visitedBtnActive : {}),
@@ -225,10 +208,10 @@ export default function CountryPanel({
               <CalendarPicker label="From" value={newFrom} onChange={setNewFrom} />
               <CalendarPicker label="To" value={newTo} onChange={setNewTo} />
               <div style={styles.dateActions}>
-                <button style={styles.confirmBtn} onClick={handleConfirmNewDate}>
+                <button className="btn-press" style={styles.confirmBtn} onClick={handleConfirmNewDate}>
                   Save with date
                 </button>
-                <button style={styles.skipBtn} onClick={handleSkipNewDate}>
+                <button className="btn-press" style={styles.skipBtn} onClick={handleSkipNewDate}>
                   Skip — no date
                 </button>
               </div>
@@ -238,11 +221,31 @@ export default function CountryPanel({
           {/* Editable dates for existing places */}
           {hasData && !showNewDatePicker && !showEditDates && (
             <div
-              style={{ ...styles.dateDisplay, cursor: 'pointer' }}
+              style={{ ...styles.dateDisplay, ...styles.dateDisplayRow, cursor: 'pointer' }}
               onClick={() => setShowEditDates(true)}
             >
-              {formatVisitDates(visitedData!.visit_start_date, visitedData!.visit_end_date) ?? 'Add visit dates'}
-              <span style={{ float: 'right', opacity: 0.5, fontSize: '0.7rem' }}>edit</span>
+              <span style={styles.dateDisplayText}>
+                {formatVisitDates(visitedData!.visit_start_date, visitedData!.visit_end_date) ?? 'Add visit dates'}
+              </span>
+              {(visitedData!.visit_start_date || visitedData!.visit_end_date) && (
+                <button
+                  type="button"
+                  className="btn-press"
+                  style={styles.dateClearBtn}
+                  aria-label="Clear visit dates"
+                  title="Clear dates"
+                  onClick={(e) => {
+                    // Prevent the parent div's onClick from opening the edit panel
+                    e.stopPropagation();
+                    onUpdateDates({ startDate: null, endDate: null });
+                    setEditFrom('');
+                    setEditTo('');
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+              <span style={styles.dateDisplayEditHint}>edit</span>
             </div>
           )}
 
@@ -252,6 +255,7 @@ export default function CountryPanel({
               <CalendarPicker label="To" value={editTo} onChange={setEditTo} />
               <div style={styles.dateActions}>
                 <button
+                  className="btn-press"
                   style={{
                     ...styles.confirmBtn,
                     ...(dateSaveStatus === 'saved' ? styles.saveBtnSaved : {}),
@@ -265,41 +269,24 @@ export default function CountryPanel({
                       : dateSaveStatus === 'error' ? 'Failed'
                         : 'Save Dates'}
                 </button>
-                <button style={styles.skipBtn} onClick={() => setShowEditDates(false)}>
+                <button className="btn-press" style={styles.skipBtn} onClick={() => setShowEditDates(false)}>
                   Cancel
                 </button>
               </div>
             </div>
           )}
 
-          <textarea
-            style={styles.textarea}
-            placeholder="Add notes about this place..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-
-          <button
-            style={{
-              ...styles.saveBtn,
-              ...(saveStatus === 'saved' ? styles.saveBtnSaved : {}),
-              ...(saveStatus === 'error' ? styles.saveBtnError : {}),
-            }}
-            onClick={handleSaveNotes}
-            disabled={saveStatus === 'saving'}
-          >
-            {saveStatus === 'saving'
-              ? 'Saving...'
-              : saveStatus === 'saved'
-                ? 'Saved!'
-                : saveStatus === 'error'
-                  ? 'Save failed — check console'
-                  : 'Save Notes'}
-          </button>
-
-          <button style={styles.galleryBtn} onClick={onOpenGallery}>
-            Photo Gallery{photoCount > 0 ? ` (${photoCount})` : ''}
-          </button>
+          {/* Single "View Activity" entry point — only for country polygons.
+              Cities and states have no activity page. */}
+          {isCountryLevel && onOpenActivity && (
+            <button
+              className="btn-press"
+              style={styles.viewActivityBtn}
+              onClick={onOpenActivity}
+            >
+              View Activity
+            </button>
+          )}
         </>
       ) : (
         <p style={styles.loginHint}>Log in to save visited places and notes</p>
@@ -317,13 +304,16 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 'calc(100vw - 2rem)',
     maxHeight: 'calc(100vh - 56px - 2rem - env(safe-area-inset-bottom, 0px))',
     overflowY: 'auto' as const,
-    background: 'rgba(15, 15, 25, 0.88)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    border: '1px solid rgba(100, 180, 255, 0.2)',
-    borderRadius: '18px',
+    // Frosted glass: more transparent base so the blur reads through
+    background: 'rgba(16, 18, 28, 0.62)',
+    backdropFilter: 'blur(20px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+    border: '1px solid rgba(255, 255, 255, 0.09)',
+    borderRadius: '22px',
     padding: '1.25rem',
     zIndex: 1000,
+    // Soft shadow for layered depth
+    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.35)',
     animation: 'panelSlideIn 0.25s ease-out',
   },
   header: {
@@ -332,36 +322,23 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     marginBottom: '0.75rem',
   },
-  name: { fontSize: '1.1rem', fontWeight: 600, color: '#fff', margin: 0 },
+  name: { fontSize: '1.1rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.92)', margin: 0 },
   subtitle: { fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)', margin: '0.15rem 0 0 0' },
   closeBtn: {
     background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.5)',
     fontSize: '1.25rem', cursor: 'pointer', padding: '0.25rem 0.5rem',
-    borderRadius: '6px', lineHeight: 1,
+    borderRadius: '999px', lineHeight: 1,
   },
   visitedBtn: {
-    width: '100%', padding: '0.6rem', background: 'rgba(255, 255, 255, 0.06)',
-    border: '1px solid rgba(100, 180, 255, 0.2)', borderRadius: '8px',
-    color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.85rem', cursor: 'pointer',
-    fontFamily: 'inherit', marginBottom: '0.75rem',
+    width: '100%', padding: '0.7rem', background: 'rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.82)', fontSize: '0.85rem', fontWeight: 500,
+    cursor: 'pointer', fontFamily: 'inherit', marginBottom: '0.75rem',
   },
   visitedBtnActive: {
     background: 'rgba(255, 195, 50, 0.15)',
     borderColor: 'rgba(255, 195, 50, 0.4)',
     color: 'rgba(255, 195, 50, 0.9)',
-  },
-  textarea: {
-    width: '100%', minHeight: '100px', background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(100, 180, 255, 0.15)', borderRadius: '8px',
-    padding: '0.75rem', color: '#fff', fontSize: '0.9rem', fontFamily: 'inherit',
-    resize: 'vertical' as const, outline: 'none', boxSizing: 'border-box' as const,
-    marginBottom: '0.5rem',
-  },
-  saveBtn: {
-    width: '100%', padding: '0.5rem', background: 'rgba(100, 180, 255, 0.12)',
-    border: '1px solid rgba(100, 180, 255, 0.25)', borderRadius: '8px',
-    color: 'rgba(100, 180, 255, 0.8)', fontSize: '0.85rem', cursor: 'pointer',
-    fontFamily: 'inherit',
   },
   saveBtnSaved: {
     background: 'rgba(80, 200, 120, 0.15)',
@@ -373,19 +350,19 @@ const styles: Record<string, React.CSSProperties> = {
     borderColor: 'rgba(255, 80, 80, 0.35)',
     color: 'rgba(255, 80, 80, 0.9)',
   },
-  galleryBtn: {
-    width: '100%', padding: '0.55rem', marginTop: '0.5rem',
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(100, 180, 255, 0.2)', borderRadius: '8px',
-    color: 'rgba(100, 180, 255, 0.7)', fontSize: '0.85rem', cursor: 'pointer',
-    fontFamily: 'inherit',
+  viewActivityBtn: {
+    width: '100%', padding: '0.7rem', marginTop: '0.25rem',
+    background: 'rgba(100, 180, 255, 0.14)',
+    border: '1px solid rgba(100, 180, 255, 0.3)', borderRadius: '999px',
+    color: 'rgba(100, 180, 255, 0.95)', fontSize: '0.85rem', fontWeight: 500,
+    cursor: 'pointer', fontFamily: 'inherit',
   },
   pailBtn: {
-    width: '34px', height: '34px',
+    width: '36px', height: '36px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'rgba(15, 15, 25, 0.7)',
-    border: '1px solid rgba(255, 130, 110, 0.25)',
-    borderRadius: '8px',
+    background: 'rgba(15, 15, 25, 0.5)',
+    border: '1px solid rgba(255, 130, 110, 0.28)',
+    borderRadius: '999px',
     cursor: 'pointer', flexShrink: 0, padding: 0,
   },
   pailBtnActive: {
@@ -405,15 +382,15 @@ const styles: Record<string, React.CSSProperties> = {
   },
   dateActions: { display: 'flex', gap: '0.35rem', marginTop: '0.5rem' },
   confirmBtn: {
-    flex: 1, padding: '0.5rem', background: 'rgba(100, 180, 255, 0.15)',
-    border: '1px solid rgba(100, 180, 255, 0.3)', borderRadius: '6px',
-    color: 'rgba(100, 180, 255, 0.9)', fontSize: '0.8rem', fontWeight: 500,
+    flex: 1, padding: '0.55rem', background: 'rgba(100, 180, 255, 0.15)',
+    border: '1px solid rgba(100, 180, 255, 0.3)', borderRadius: '999px',
+    color: 'rgba(100, 180, 255, 0.95)', fontSize: '0.8rem', fontWeight: 500,
     cursor: 'pointer', fontFamily: 'inherit',
   },
   skipBtn: {
-    flex: 1, padding: '0.5rem', background: 'rgba(255, 255, 255, 0.04)',
-    border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '6px',
-    color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.8rem', cursor: 'pointer',
+    flex: 1, padding: '0.55rem', background: 'rgba(255, 255, 255, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.8rem', cursor: 'pointer',
     fontFamily: 'inherit',
   },
   dateDisplay: {
@@ -421,6 +398,23 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(100, 180, 255, 0.06)',
     border: '1px solid rgba(100, 180, 255, 0.1)', borderRadius: '6px',
     color: 'rgba(100, 180, 255, 0.7)', fontSize: '0.78rem',
+  },
+  dateDisplayRow: {
+    display: 'flex', alignItems: 'center', gap: '0.5rem',
+  },
+  dateDisplayText: {
+    flex: 1, minWidth: 0,
+  },
+  dateDisplayEditHint: {
+    opacity: 0.5, fontSize: '0.7rem', flexShrink: 0,
+  },
+  dateClearBtn: {
+    width: '20px', height: '20px', padding: 0, flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.12)', borderRadius: '999px',
+    color: 'rgba(255, 255, 255, 0.55)', fontSize: '0.7rem', lineHeight: 1,
+    cursor: 'pointer', fontFamily: 'inherit',
   },
   // --- Friend view ---
   friendBadge: {
@@ -436,15 +430,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 0.65rem', background: 'rgba(180, 130, 255, 0.1)',
     border: '1px solid rgba(180, 130, 255, 0.25)', borderRadius: '8px',
     color: 'rgba(180, 130, 255, 0.9)', fontSize: '0.82rem', marginBottom: '0.75rem',
-  },
-  friendNotesBox: { marginBottom: '0.75rem' },
-  friendNotesLabel: {
-    color: 'rgba(255, 255, 255, 0.4)', fontSize: '0.7rem', marginBottom: '0.25rem',
-    textTransform: 'uppercase' as const, letterSpacing: '0.05em',
-  },
-  friendNotesText: {
-    color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.85rem', margin: 0,
-    lineHeight: 1.5, whiteSpace: 'pre-wrap' as const,
   },
   friendGalleryBtn: {
     width: '100%', padding: '0.55rem', background: 'rgba(180, 130, 255, 0.1)',

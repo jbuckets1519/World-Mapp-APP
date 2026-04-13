@@ -1,6 +1,9 @@
 import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import ReactGlobe, { type GlobeMethods } from 'react-globe.gl';
 import type { GeoJsonFeature, CityPoint } from '../../types';
+import { getPolygonId } from './getPolygonId';
+
+export { getPolygonId };
 
 /** Methods exposed to parent via ref */
 export interface GlobeHandle {
@@ -38,14 +41,14 @@ const MAX_ZOOM_DISTANCE = 500;
 // --- Country colors — slightly lighter fill so landmasses pop against the ocean ---
 const COUNTRY_CAP = 'rgba(100, 180, 255, 0.22)';
 const COUNTRY_SIDE = 'rgba(100, 180, 255, 0.07)';
-const COUNTRY_STROKE = 'rgb(100, 180, 255)';
+const COUNTRY_STROKE = 'rgb(245, 235, 220)';
 const COUNTRY_SELECTED_CAP = 'rgba(100, 180, 255, 0.6)';
 const COUNTRY_SELECTED_SIDE = 'rgba(100, 180, 255, 0.35)';
 
 // --- State colors — cap matches countries so USA looks the same ---
 const STATE_CAP = 'rgba(100, 180, 255, 0.22)';
 const STATE_SIDE = 'rgba(100, 180, 255, 0.07)';
-const STATE_STROKE = 'rgb(255, 230, 130)';
+const STATE_STROKE = 'rgba(245, 235, 220, 0.45)';
 const STATE_SELECTED_CAP = 'rgba(255, 230, 130, 0.25)';
 const STATE_SELECTED_SIDE = 'rgba(255, 230, 130, 0.1)';
 
@@ -85,10 +88,6 @@ const LAKE_ALT = 0.01;
 const COUNTRY_SELECTED_ALT = 0.035;
 const STATE_SELECTED_ALT = 0.037;
 
-export function getPolygonId(f: GeoJsonFeature): string {
-  const prefix = f._isState ? 'state' : 'country';
-  return `${prefix}:${f.properties.NAME}`;
-}
 
 
 const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
@@ -302,7 +301,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       ref={globeRef}
       width={width}
       height={height}
-      globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+      globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
       backgroundColor="rgba(0,0,0,0)"
       showAtmosphere={true}
       atmosphereColor="rgba(140, 140, 255, 0.3)"

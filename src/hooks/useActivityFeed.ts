@@ -448,5 +448,28 @@ export function useActivityFeed(
     [userId],
   );
 
-  return { feed, loading, refreshing, refresh, logBadge, logPost, upsertPlaceCard, getOwnPlaceCard };
+  /**
+   * Delete the visited card for a place — called when the user unmarks
+   * a place as visited so the card disappears from followers' feeds.
+   */
+  const deletePlaceCard = useCallback(
+    async (placeId: string): Promise<void> => {
+      if (!userId || !isSupabaseConfigured) return;
+      console.log('[ActivityFeed] deletePlaceCard →', { placeId });
+      const { error } = await supabase
+        .from('activity_feed')
+        .delete()
+        .eq('user_id', userId)
+        .eq('activity_type', 'visited')
+        .eq('place_id', placeId);
+      if (error) {
+        console.error('[ActivityFeed] deletePlaceCard ERROR:', error.message, error);
+      } else {
+        console.log('[ActivityFeed] deletePlaceCard OK');
+      }
+    },
+    [userId],
+  );
+
+  return { feed, loading, refreshing, refresh, logBadge, logPost, upsertPlaceCard, deletePlaceCard, getOwnPlaceCard };
 }

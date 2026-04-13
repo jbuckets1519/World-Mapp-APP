@@ -352,15 +352,16 @@ function FeedTab({
                           <span style={styles.postPlace}>{item.place_name ?? 'a place'}</span>
                         </p>
                       ) : (
-                        <>
+                        <p style={styles.postHeaderLine}>
                           <span role="button" style={styles.itemName} onClick={handleProfileTap}>
                             {name}
                           </span>
-                          <span style={styles.cardPlace}>
+                          {' visited '}
+                          <span style={styles.postPlace}>
                             {item.place_name ?? 'a place'}
                             {subtitle && <span style={styles.cardSubtitle}>, {subtitle}</span>}
                           </span>
-                        </>
+                        </p>
                       )}
                       {dates && <span style={styles.cardDates}>{dates}</span>}
                     </div>

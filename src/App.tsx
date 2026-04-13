@@ -173,6 +173,7 @@ export default function App() {
     logBadge,
     logPost,
     upsertPlaceCard,
+    deletePlaceCard,
   } = useActivityFeed(user?.id ?? null, followingIds);
 
   const [showBucketlistOverlay, setShowBucketlistOverlay] = useState(false);
@@ -614,7 +615,9 @@ export default function App() {
 
   const handleRemoveVisited = useCallback(async () => {
     await removeVisited(selectedPlaceType, selectedPlaceId);
-  }, [removeVisited, selectedPlaceType, selectedPlaceId]);
+    // Remove the feed card so it disappears from followers' feeds
+    await deletePlaceCard(selectedPlaceId);
+  }, [removeVisited, deletePlaceCard, selectedPlaceType, selectedPlaceId]);
 
   // Date edits keep the feed card's metadata in sync so the dates shown on
   // bumped cards stay accurate — but date edits alone never bump the feed.

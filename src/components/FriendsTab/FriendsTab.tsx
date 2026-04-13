@@ -15,26 +15,28 @@ interface FriendsTabProps {
   onViewProfile: (userId: string) => void;
 }
 
-/** Small circular avatar — image or initial letter */
-function FriendAvatar({ profile }: { profile: UserProfile }) {
+/** Circular avatar — image or initial letter */
+function FriendAvatar({ profile, size = 44 }: { profile: UserProfile; size?: number }) {
   const name = profile.username || profile.display_name || '?';
   const initial = name[0].toUpperCase();
   if (profile.avatar_url) {
     return (
       <div style={{
-        width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+        width: `${size}px`, height: `${size}px`, borderRadius: '50%', flexShrink: 0,
         backgroundImage: `url(${profile.avatar_url})`,
         backgroundSize: 'cover', backgroundPosition: 'center',
+        border: '2px solid rgba(100, 180, 255, 0.15)',
       }} />
     );
   }
   return (
     <div style={{
-      width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-      background: 'rgba(100, 180, 255, 0.12)',
+      width: `${size}px`, height: `${size}px`, borderRadius: '50%', flexShrink: 0,
+      background: 'rgba(100, 180, 255, 0.1)',
+      border: '2px solid rgba(100, 180, 255, 0.12)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(100, 180, 255, 0.7)' }}>{initial}</span>
+      <span style={{ fontSize: `${size * 0.38}px`, fontWeight: 600, color: 'rgba(100, 180, 255, 0.7)' }}>{initial}</span>
     </div>
   );
 }
@@ -216,7 +218,7 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-    background: 'rgba(8, 8, 18, 1)',
+    background: 'linear-gradient(180deg, rgba(10, 16, 14, 1) 0%, rgba(8, 8, 18, 1) 350px)',
     zIndex: 5,
   },
   scrollArea: {
@@ -227,7 +229,6 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '480px',
     margin: '0 auto',
     animation: 'tabFadeIn 260ms ease-out',
-    background: 'linear-gradient(180deg, rgba(80, 200, 120, 0.03) 0%, transparent 180px)',
   },
   heading: {
     margin: '0 0 1.25rem',
@@ -281,11 +282,12 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '0.65rem 0.75rem',
-    gap: '0.75rem',
-    borderRadius: '14px',
-    marginBottom: '0.25rem',
-    background: 'rgba(255, 255, 255, 0.02)',
+    padding: '0.75rem 0.85rem',
+    gap: '0.85rem',
+    borderRadius: '16px',
+    marginBottom: '0.4rem',
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid rgba(255, 255, 255, 0.04)',
   },
   userInfo: {
     flex: 1,

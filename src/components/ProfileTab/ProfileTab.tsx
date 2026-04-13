@@ -6,7 +6,7 @@ import TravelStats from '../Auth/TravelStats';
 import { Achievements } from '../Achievements';
 import { TAB_BAR_HEIGHT } from '../Navigation';
 import { isUNMember } from '../../data/un-members';
-import { COUNTRY_TO_CONTINENT, CONTINENT_COLORS } from '../../data/continents';
+import { COUNTRY_TO_CONTINENT } from '../../data/continents';
 import type { Continent } from '../../data/continents';
 
 const MAX_BIO_WORDS = 50;
@@ -82,7 +82,7 @@ function ProfileTab({
   const initial = (profile.username || profile.email || '?')[0].toUpperCase();
 
   // Compute country and continent counts for achievements
-  const { achievementCountries, achievementContinents, visitedContinentsList } = useMemo(() => {
+  const { achievementCountries, achievementContinents } = useMemo(() => {
     const active = places.filter((p) => p.is_visited !== false);
     const polygons = active.filter((p) => p.place_type === 'country' || p.place_type === 'territory');
     let countryCount = 0;
@@ -95,11 +95,7 @@ function ProfileTab({
         if (continent) visitedContinents.add(continent);
       }
     }
-    return {
-      achievementCountries: countryCount,
-      achievementContinents: visitedContinents.size,
-      visitedContinentsList: [...visitedContinents] as Continent[],
-    };
+    return { achievementCountries: countryCount, achievementContinents: visitedContinents.size };
   }, [places]);
 
   return (
@@ -230,22 +226,6 @@ function ProfileTab({
           </button>
         </div>
 
-        {/* ---- Continent color strip ---- */}
-        {visitedContinentsList.length > 0 && (
-          <div style={styles.continentStrip}>
-            {visitedContinentsList.map((c) => {
-              const cc = CONTINENT_COLORS[c];
-              return (
-                <div key={c} style={{
-                  ...styles.continentDot,
-                  background: cc.primary,
-                  boxShadow: `0 0 8px ${cc.glow}`,
-                }} title={c} />
-              );
-            })}
-          </div>
-        )}
-
         {/* ---- Travel Stats ---- */}
         <TravelStats places={places} photoCount={totalPhotoCount} />
 
@@ -315,7 +295,7 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-    background: 'rgba(8, 8, 18, 1)',
+    background: 'linear-gradient(180deg, rgba(14, 12, 24, 1) 0%, rgba(8, 8, 18, 1) 350px)',
     zIndex: 5,
   },
   scrollArea: {
@@ -517,19 +497,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderColor: 'rgba(255, 80, 80, 0.35)',
     color: 'rgba(255, 80, 80, 0.9)',
   },
-  // --- Continent color strip ---
-  continentStrip: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '0.5rem',
-    padding: '0.5rem 0 0',
-  },
-  continentDot: {
-    width: '10px',
-    height: '10px',
-    borderRadius: '50%',
-  },
-
   // --- Social row (following / followers) ---
   socialRow: {
     display: 'flex',

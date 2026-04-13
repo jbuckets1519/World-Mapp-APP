@@ -273,8 +273,7 @@ function FeedTab({
                     style={{
                       ...styles.card,
                       cursor: 'pointer',
-                      borderLeftColor: getContinentColor(item.place_name ?? '').primary,
-                      borderLeftWidth: '3px',
+                      borderColor: getContinentColor(item.place_name ?? '').primary,
                     }}
                     onClick={() => handleItemClick(item)}
                     role="button"
@@ -349,8 +348,7 @@ function FeedTab({
                   style={{
                     ...styles.card,
                     cursor: clickable ? 'pointer' : 'default',
-                    borderLeftColor: getContinentColor(item.place_name ?? '').primary,
-                    borderLeftWidth: '3px',
+                    borderColor: getContinentColor(item.place_name ?? '').primary,
                   }}
                   onClick={clickable ? () => handleItemClick(item) : undefined}
                   role={clickable ? 'button' : undefined}
@@ -422,7 +420,7 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-    background: 'rgba(8, 8, 18, 1)',
+    background: 'linear-gradient(180deg, rgba(12, 14, 28, 1) 0%, rgba(8, 8, 18, 1) 300px)',
     zIndex: 5,
   },
   scrollArea: {
@@ -433,20 +431,21 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '480px',
     margin: '0 auto',
     animation: 'tabFadeIn 260ms ease-out',
-    background: 'linear-gradient(180deg, rgba(100, 160, 255, 0.04) 0%, transparent 180px)',
   },
   headerRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '1.25rem',
+    marginBottom: '1.5rem',
+    paddingBottom: '1rem',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
   },
   heading: {
     margin: 0,
-    fontSize: '1.35rem',
+    fontSize: '1.5rem',
     fontWeight: 700,
     color: 'rgba(255, 255, 255, 0.92)',
-    letterSpacing: '-0.01em',
+    letterSpacing: '-0.02em',
   },
   refreshBtn: {
     width: '36px',
@@ -489,7 +488,7 @@ const styles: Record<string, React.CSSProperties> = {
   list: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '0.75rem',
+    gap: '1rem',
   },
   item: {
     display: 'flex',
@@ -553,12 +552,10 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: '0.65rem',
-    padding: '0.95rem 1rem 0.85rem',
-    background: 'rgba(255, 255, 255, 0.045)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
+    padding: '1rem 1.1rem 0.9rem',
+    background: 'rgba(255, 255, 255, 0.035)',
     border: '1px solid rgba(255, 255, 255, 0.07)',
-    borderRadius: '18px',
+    borderRadius: '16px',
   },
   cardHeader: {
     display: 'flex',

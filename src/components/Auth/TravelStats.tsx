@@ -67,13 +67,20 @@ export default function TravelStats({ places, photoCount }: TravelStatsProps) {
       <h3 style={styles.heading}>Travel Stats</h3>
 
       <div style={styles.grid}>
-        <StatTile label="Countries" value={`${stats.countryCount} / ${TOTAL_UN_COUNTRIES}`} />
-        <StatTile label="Territories" value={stats.territoryCount} />
-        <StatTile label="States" value={stats.stateCount} />
-        <StatTile label="Cities" value={stats.cityCount} />
-        <StatTile label="Continents" value={`${stats.continentCount}/7`} />
-        <StatTile label="World" value={`${stats.worldPercent}%`} />
-        <StatTile label="Photos" value={photoCount} />
+        <StatTile label="Countries" value={`${stats.countryCount} / ${TOTAL_UN_COUNTRIES}`}
+          tint="rgba(100, 160, 255, 0.06)" accent="rgba(100, 160, 255, 0.15)" />
+        <StatTile label="Territories" value={stats.territoryCount}
+          tint="rgba(180, 130, 255, 0.06)" accent="rgba(180, 130, 255, 0.15)" />
+        <StatTile label="States" value={stats.stateCount}
+          tint="rgba(80, 200, 120, 0.06)" accent="rgba(80, 200, 120, 0.15)" />
+        <StatTile label="Cities" value={stats.cityCount}
+          tint="rgba(255, 170, 60, 0.06)" accent="rgba(255, 170, 60, 0.15)" />
+        <StatTile label="Continents" value={`${stats.continentCount}/7`}
+          tint="rgba(240, 90, 90, 0.06)" accent="rgba(240, 90, 90, 0.15)" />
+        <StatTile label="World" value={`${stats.worldPercent}%`}
+          tint="rgba(255, 220, 80, 0.06)" accent="rgba(255, 220, 80, 0.15)" />
+        <StatTile label="Photos" value={photoCount}
+          tint="rgba(255, 160, 200, 0.06)" accent="rgba(255, 160, 200, 0.15)" />
       </div>
 
       {stats.visitedContinents.length > 0 && (
@@ -98,9 +105,15 @@ export default function TravelStats({ places, photoCount }: TravelStatsProps) {
   );
 }
 
-function StatTile({ label, value }: { label: string; value: string | number }) {
+function StatTile({ label, value, tint, accent }: {
+  label: string; value: string | number; tint?: string; accent?: string;
+}) {
   return (
-    <div style={styles.tile}>
+    <div style={{
+      ...styles.tile,
+      ...(tint ? { background: tint } : {}),
+      ...(accent ? { borderColor: accent } : {}),
+    }}>
       <span style={styles.tileValue}>{value}</span>
       <span style={styles.tileLabel}>{label}</span>
     </div>

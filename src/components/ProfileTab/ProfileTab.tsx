@@ -1,6 +1,7 @@
 import { memo, useState, useRef, useEffect, useMemo } from 'react';
 import type { ProfileData } from '../../hooks/useProfile';
 import type { VisitedPlace } from '../../hooks/useTravelData';
+import type { FollowRelation } from '../../types';
 import TravelStats from '../Auth/TravelStats';
 import { Achievements } from '../Achievements';
 import { TAB_BAR_HEIGHT } from '../Navigation';
@@ -15,9 +16,12 @@ interface ProfileTabProps {
   saving: boolean;
   places: VisitedPlace[];
   totalPhotoCount: number;
+  following: FollowRelation[];
+  followers: FollowRelation[];
   onSave: (updates: { username?: string; bio?: string }) => Promise<boolean>;
   onUploadAvatar: (file: File) => Promise<boolean>;
   onSignOut: () => void;
+  onViewProfile: (userId: string) => void;
 }
 
 function countWords(text: string): number {
@@ -29,10 +33,16 @@ function ProfileTab({
   saving,
   places,
   totalPhotoCount,
+  following,
+  followers,
   onSave,
   onUploadAvatar,
   onSignOut,
+  onViewProfile,
 }: ProfileTabProps) {
+  // --- Social list overlay ---
+  const [socialList, setSocialList] = useState<'following' | 'followers' | null>(null);
+
   // --- Profile editing state ---
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState(profile.username ?? '');
@@ -197,12 +207,81 @@ function ProfileTab({
           </div>
         )}
 
+        {/* ---- Following / Followers ---- */}
+        <div style={styles.socialRow}>
+          <button
+            className="btn-press"
+            style={styles.socialBtn}
+            onClick={() => setSocialList('following')}
+          >
+            <span style={styles.socialCount}>{following.length}</span> Following
+          </button>
+          <span style={styles.socialDot}>·</span>
+          <button
+            className="btn-press"
+            style={styles.socialBtn}
+            onClick={() => setSocialList('followers')}
+          >
+            <span style={styles.socialCount}>{followers.length}</span> Follower{followers.length === 1 ? '' : 's'}
+          </button>
+        </div>
+
         {/* ---- Travel Stats ---- */}
         <TravelStats places={places} photoCount={totalPhotoCount} />
 
         {/* ---- Achievements ---- */}
         <Achievements countryCount={achievementCountries} continentCount={achievementContinents} />
       </div>
+
+      {/* ---- Social list overlay ---- */}
+      {socialList && (
+        <div style={styles.socialOverlay} onClick={() => setSocialList(null)}>
+          <div style={styles.socialPanel} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.socialHeader}>
+              <h3 style={styles.socialHeading}>
+                {socialList === 'following' ? 'Following' : 'Followers'}
+              </h3>
+              <button style={styles.socialCloseBtn} onClick={() => setSocialList(null)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+            <div style={styles.socialListScroll}>
+              {(socialList === 'following' ? following : followers).length === 0 ? (
+                <p style={styles.socialEmpty}>
+                  {socialList === 'following'
+                    ? "You're not following anyone yet"
+                    : 'No followers yet'}
+                </p>
+              ) : (
+                (socialList === 'following' ? following : followers).map((rel) => {
+                  const userId = socialList === 'following' ? rel.following_id : rel.follower_id;
+                  const name = rel.profile?.username || rel.profile?.display_name || 'Unknown';
+                  return (
+                    <button
+                      key={rel.id}
+                      className="btn-press"
+                      style={styles.socialUserRow}
+                      onClick={() => {
+                        setSocialList(null);
+                        onViewProfile(userId);
+                      }}
+                    >
+                      {rel.profile?.avatar_url ? (
+                        <div style={{ ...styles.socialAvatar, backgroundImage: `url(${rel.profile.avatar_url})` }} />
+                      ) : (
+                        <div style={styles.socialAvatar}>
+                          <span style={styles.socialAvatarInitial}>{name[0].toUpperCase()}</span>
+                        </div>
+                      )}
+                      <span style={styles.socialUserName}>{name}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -418,4 +497,129 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(255, 80, 80, 0.9)',
   },
 
+  // --- Social row (following / followers) ---
+  socialRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    padding: '0.85rem 0 0.25rem',
+  },
+  socialBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'rgba(255, 255, 255, 0.55)',
+    fontSize: '0.82rem',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    padding: '0.25rem 0.4rem',
+    borderRadius: '6px',
+  },
+  socialCount: {
+    fontWeight: 700,
+    color: 'rgba(255, 255, 255, 0.88)',
+  },
+  socialDot: {
+    color: 'rgba(255, 255, 255, 0.25)',
+    fontSize: '0.9rem',
+  },
+
+  // --- Social list overlay ---
+  socialOverlay: {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.6)',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
+    zIndex: 100,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '2rem',
+  },
+  socialPanel: {
+    width: '100%',
+    maxWidth: '380px',
+    maxHeight: '70vh',
+    background: '#10111c',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '18px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    overflow: 'hidden',
+  },
+  socialHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1rem 1.25rem',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+    flexShrink: 0,
+  },
+  socialHeading: {
+    margin: 0,
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  socialCloseBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: '1.2rem',
+    cursor: 'pointer',
+    padding: '0.25rem 0.5rem',
+    lineHeight: 1,
+    fontFamily: 'inherit',
+  },
+  socialListScroll: {
+    overflowY: 'auto' as const,
+    padding: '0.5rem 0.75rem 1rem',
+  },
+  socialEmpty: {
+    color: 'rgba(255, 255, 255, 0.35)',
+    fontSize: '0.82rem',
+    textAlign: 'center' as const,
+    padding: '2rem 1rem',
+    margin: 0,
+  },
+  socialUserRow: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '0.6rem 0.5rem',
+    background: 'none',
+    border: 'none',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    textAlign: 'left' as const,
+  },
+  socialAvatar: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    background: 'rgba(100, 180, 255, 0.15)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  socialAvatarInitial: {
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    color: 'rgba(100, 180, 255, 0.7)',
+  },
+  socialUserName: {
+    color: 'rgba(100, 180, 255, 0.9)',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+  },
 };

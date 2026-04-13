@@ -840,9 +840,12 @@ export default function App() {
               saving={profileSaving}
               places={places}
               totalPhotoCount={totalPhotoCount}
+              following={following}
+              followers={followers}
               onSave={updateProfile}
               onUploadAvatar={uploadAvatar}
               onSignOut={signOut}
+              onViewProfile={setViewingProfileId}
             />
           </Suspense>
         </div>

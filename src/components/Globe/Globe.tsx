@@ -251,6 +251,8 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       el.style.background = color;
       el.style.cursor = 'pointer';
       el.style.pointerEvents = 'auto';
+      // Smooth fade for horizon culling — prevents flicker at the edge
+      el.style.transition = 'opacity 120ms ease-out';
       // Tooltip on hover
       el.title = `${city.name}, ${city.country}`;
       // Click handler
@@ -286,6 +288,12 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
       const cx = cam.x / camLen;
       const cy = cam.y / camLen;
       const cz = cam.z / camLen;
+      // Fade thresholds: dots fully visible above FADE_IN, fully hidden
+      // below FADE_OUT, and smoothly interpolated in between. This
+      // eliminates the hard-cutoff flicker near the globe's horizon.
+      const FADE_OUT = 0.30; // fully transparent (well behind the edge)
+      const FADE_IN = 0.55;  // fully opaque (comfortably facing the camera)
+      const range = FADE_IN - FADE_OUT;
       cityElMapRef.current.forEach(({ el, lat, lng }) => {
         // Convert lat/lng to unit vector (globe.gl uses y-up, z-forward)
         const latR = lat * DEG2RAD;
@@ -294,9 +302,16 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
         const px = cosLat * Math.sin(lngR);
         const py = Math.sin(latR);
         const pz = cosLat * Math.cos(lngR);
-        // Dot product threshold: cos(63°) ≈ 0.45 hides dots near the curved edge
         const dot = px * cx + py * cy + pz * cz;
-        el.style.display = dot > 0.45 ? '' : 'none';
+        if (dot <= FADE_OUT) {
+          el.style.display = 'none';
+          el.style.opacity = '0';
+        } else {
+          el.style.display = '';
+          // Smooth fade from 0→1 across the transition band
+          const t = Math.min(1, (dot - FADE_OUT) / range);
+          el.style.opacity = t >= 1 ? '1' : t.toFixed(2);
+        }
       });
       rafId = requestAnimationFrame(cull);
     };

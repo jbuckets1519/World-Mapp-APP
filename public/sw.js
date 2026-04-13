@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yuku-v2';
+const CACHE_NAME = 'yuku-v3';
 
 // Assets to pre-cache on install
 const PRECACHE_URLS = [

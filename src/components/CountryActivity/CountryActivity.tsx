@@ -180,7 +180,8 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urls.length]);
 
-  // Swipe-to-paginate on touch devices
+  // Swipe-to-paginate on touch devices. The threshold (50px) is enough to
+  // reject accidental taps but small enough to feel responsive.
   const touchStartX = useRef<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -193,26 +194,24 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
     touchStartX.current = null;
   };
 
-  const hasPrev = photoIndex > 0;
-  const hasNext = photoIndex < urls.length - 1;
-
   return (
     <div style={viewer.backdrop} onClick={onClose}>
+      {/* Close button is fixed to the viewport corner, NOT the container,
+          so it stays put regardless of photo size or caption length. */}
+      <button
+        style={viewer.closeBtn}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        aria-label="Close post"
+      >
+        ✕
+      </button>
+
       <div style={viewer.container} onClick={(e) => e.stopPropagation()}>
-        <button
-          style={viewer.closeBtn}
-          onClick={onClose}
-          aria-label="Close post"
-        >
-          ✕
-        </button>
-
-        {urls.length > 1 && (
-          <div style={viewer.counter}>
-            {photoIndex + 1} / {urls.length}
-          </div>
-        )}
-
+        {/* Fixed-aspect square slideshow — every photo is rendered the same
+            size via object-fit: cover, so portraits/landscapes align cleanly. */}
         <div
           style={viewer.photoWrap}
           onTouchStart={onTouchStart}
@@ -223,29 +222,24 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
               src={urls[photoIndex]}
               alt=""
               style={viewer.photo}
-              key={urls[photoIndex]}
+              draggable={false}
             />
           ) : (
             <div style={viewer.missing}>Photo unavailable</div>
           )}
 
-          {hasPrev && (
-            <button
-              style={{ ...viewer.arrow, ...viewer.arrowLeft }}
-              onClick={goPrev}
-              aria-label="Previous photo"
-            >
-              ‹
-            </button>
-          )}
-          {hasNext && (
-            <button
-              style={{ ...viewer.arrow, ...viewer.arrowRight }}
-              onClick={goNext}
-              aria-label="Next photo"
-            >
-              ›
-            </button>
+          {urls.length > 1 && (
+            <div style={viewer.dots}>
+              {urls.map((_, i) => (
+                <span
+                  key={i}
+                  style={{
+                    ...viewer.dot,
+                    ...(i === photoIndex ? viewer.dotActive : {}),
+                  }}
+                />
+              ))}
+            </div>
           )}
         </div>
 
@@ -533,13 +527,16 @@ const viewer: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'rgba(0, 0, 0, 0.94)',
+    // Solid dark — no transparency. Matches the app's dark shell.
+    background: '#0a0a14',
     zIndex: 3100,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     padding: '1.5rem',
     cursor: 'pointer',
+    // Prevent horizontal overscroll from swipe gestures
+    overflow: 'hidden',
   },
   container: {
     position: 'relative',
@@ -549,73 +546,79 @@ const viewer: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     cursor: 'default',
-    gap: '0.75rem',
+    gap: '0.9rem',
   },
+  // Fixed to the VIEWPORT, not the container — stays put regardless of
+  // photo aspect ratio, caption length, or container layout.
   closeBtn: {
-    position: 'absolute',
-    top: 'env(safe-area-inset-top, 0px)',
-    right: 0,
-    width: '38px',
-    height: '38px',
+    position: 'fixed',
+    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+    right: '0.75rem',
+    width: '40px',
+    height: '40px',
     borderRadius: '50%',
-    background: 'rgba(255, 255, 255, 0.1)',
+    background: 'rgba(255, 255, 255, 0.12)',
     border: 'none',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.95)',
     fontSize: '1.2rem',
     cursor: 'pointer',
     lineHeight: 1,
-    zIndex: 2,
+    zIndex: 3200,
     fontFamily: 'inherit',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  counter: {
-    position: 'absolute',
-    top: '0.5rem',
-    left: '0.5rem',
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: '0.8rem',
-    zIndex: 2,
-  },
+  // Uniform square slideshow cell. Every photo fills this box via
+  // object-fit: cover so portraits, landscapes, and squares all match.
   photoWrap: {
     position: 'relative' as const,
     width: '100%',
-    flex: 1,
-    minHeight: 0,
+    aspectRatio: '1 / 1',
+    background: '#000',
+    borderRadius: '10px',
+    overflow: 'hidden',
+    touchAction: 'pan-y' as const,
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover' as const,
+    display: 'block',
+    userSelect: 'none' as const,
+    // Disable any inherited transitions so navigation is instant.
+    transition: 'none',
+  },
+  missing: {
+    width: '100%',
+    height: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  photo: {
-    maxWidth: '100%',
-    maxHeight: '100%',
-    objectFit: 'contain' as const,
-    borderRadius: '6px',
-    userSelect: 'none' as const,
-  },
-  missing: {
     color: 'rgba(255, 255, 255, 0.3)',
     fontSize: '0.9rem',
   },
-  arrow: {
+  // Instagram-style carousel dots
+  dots: {
     position: 'absolute' as const,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    background: 'rgba(255, 255, 255, 0.1)',
-    border: 'none',
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: '2rem',
-    width: '42px',
-    height: '42px',
-    borderRadius: '50%',
-    cursor: 'pointer',
+    bottom: '0.75rem',
+    left: 0,
+    right: 0,
     display: 'flex',
-    alignItems: 'center',
     justifyContent: 'center',
-    lineHeight: 1,
-    fontFamily: 'inherit',
-    zIndex: 2,
+    alignItems: 'center',
+    gap: '0.3rem',
+    pointerEvents: 'none' as const,
   },
-  arrowLeft: { left: '0.25rem' },
-  arrowRight: { right: '0.25rem' },
+  dot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: 'rgba(255, 255, 255, 0.45)',
+  },
+  dotActive: {
+    background: 'rgba(255, 255, 255, 1)',
+  },
   captionBox: {
     background: 'rgba(255, 255, 255, 0.05)',
     border: '1px solid rgba(255, 255, 255, 0.08)',

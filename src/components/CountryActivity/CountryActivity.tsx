@@ -161,10 +161,17 @@ interface PostViewerProps {
 
 function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerProps) {
   const [photoIndex, setPhotoIndex] = useState(0);
+  // Live drag offset in pixels while the user's finger is down. Zero when
+  // idle so the track sits at exactly -photoIndex * 100%.
+  const [dragDx, setDragDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const urls = post.photo_urls;
 
   useEffect(() => {
     setPhotoIndex(0);
+    setDragDx(0);
+    setDragging(false);
   }, [post.id]);
 
   const goPrev = () => setPhotoIndex((i) => Math.max(0, i - 1));
@@ -180,17 +187,31 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urls.length]);
 
-  // Swipe-to-paginate on touch devices. The threshold (50px) is enough to
-  // reject accidental taps but small enough to feel responsive.
+  // Touch handlers — track the finger as it moves so the photo visibly
+  // slides under the user's thumb, then on release either snap to the
+  // neighbor (if dragged past ~20% of the width) or spring back.
   const touchStartX = useRef<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    setDragging(true);
   };
-  const onTouchEnd = (e: React.TouchEvent) => {
+  const onTouchMove = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (dx > 50) goPrev();
-    else if (dx < -50) goNext();
+    let dx = e.touches[0].clientX - touchStartX.current;
+    // Rubber-band at the edges so the user feels the end of the carousel
+    if ((photoIndex === 0 && dx > 0) || (photoIndex === urls.length - 1 && dx < 0)) {
+      dx *= 0.35;
+    }
+    setDragDx(dx);
+  };
+  const onTouchEnd = () => {
+    if (touchStartX.current === null) return;
+    const width = wrapRef.current?.offsetWidth ?? 1;
+    const threshold = Math.max(40, width * 0.2);
+    if (dragDx > threshold) goPrev();
+    else if (dragDx < -threshold) goNext();
+    setDragDx(0);
+    setDragging(false);
     touchStartX.current = null;
   };
 
@@ -213,19 +234,38 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
         {/* Fixed-aspect square slideshow — every photo is rendered the same
             size via object-fit: cover, so portraits/landscapes align cleanly. */}
         <div
+          ref={wrapRef}
           style={viewer.photoWrap}
           onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
         >
-          {urls[photoIndex] ? (
-            <img
-              src={urls[photoIndex]}
-              alt=""
-              style={viewer.photo}
-              draggable={false}
-            />
-          ) : (
+          {urls.length === 0 ? (
             <div style={viewer.missing}>Photo unavailable</div>
+          ) : (
+            <div
+              style={{
+                ...viewer.track,
+                // Position the track: full-width photos laid out in a row,
+                // shifted by photoIndex plus the live drag offset. While
+                // dragging we disable the transition so the photo tracks
+                // the finger 1:1; on release the transition snaps or springs.
+                transform: `translate3d(calc(${-photoIndex * 100}% + ${dragDx}px), 0, 0)`,
+                transition: dragging ? 'none' : 'transform 260ms ease-out',
+              }}
+            >
+              {urls.map((url, i) => (
+                <div key={i} style={viewer.slide}>
+                  <img
+                    src={url}
+                    alt=""
+                    style={viewer.photo}
+                    draggable={false}
+                  />
+                </div>
+              ))}
+            </div>
           )}
 
           {urls.length > 1 && (
@@ -580,14 +620,26 @@ const viewer: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     touchAction: 'pan-y' as const,
   },
+  // Horizontal track: holds every photo side-by-side at 100% width each.
+  // Transformed via translate3d so swipes feel like a physical carousel.
+  track: {
+    display: 'flex',
+    width: '100%',
+    height: '100%',
+    willChange: 'transform' as const,
+  },
+  slide: {
+    flex: '0 0 100%',
+    width: '100%',
+    height: '100%',
+  },
   photo: {
     width: '100%',
     height: '100%',
     objectFit: 'cover' as const,
     display: 'block',
     userSelect: 'none' as const,
-    // Disable any inherited transitions so navigation is instant.
-    transition: 'none',
+    pointerEvents: 'none' as const,
   },
   missing: {
     width: '100%',

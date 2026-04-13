@@ -179,6 +179,11 @@ export default function App() {
   const [zoomLevel, setZoomLevel] = useState(1);
   // Full-screen country activity page (Instagram-style post grid)
   const [showActivity, setShowActivity] = useState(false);
+  // Where the activity page was opened from — drives the "close" target.
+  // 'globe' → close returns to the info box / globe (default).
+  // 'feed'  → close returns to the activity feed tab, clearing the friend
+  //           overlay and selection so the feed is the only thing visible.
+  const [activityOrigin, setActivityOrigin] = useState<'globe' | 'feed'>('globe');
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('globe');
 
@@ -276,8 +281,17 @@ export default function App() {
     }
   }, [showStates, selectedFeature]);
 
-  // Clear selection when switching between own map and friend map
+  // Pending feed→friend navigation. When set, the effect below (which runs
+  // AFTER the clear-on-activeFriendId-change effect) re-applies the intended
+  // selection and opens the activity page. Using a ref avoids racing with
+  // React's effect ordering.
+  const pendingFeedNavRef = useRef<{ userId: string; placeId: string } | null>(null);
+
+  // Clear selection when switching between own map and friend map. Skipped
+  // when a feed→friend navigation is in flight — the next effect will set
+  // the new selection instead of clobbering it.
   useEffect(() => {
+    if (pendingFeedNavRef.current) return;
     setSelectedId(null);
     setSelectedFeature(null);
     setSelectedCity(null);
@@ -340,16 +354,17 @@ export default function App() {
     globeRef.current?.flyTo(lat, lng);
   }, []);
 
-  // Feed → globe: user tapped an activity referencing a place. Switch to the
-  // globe tab and select the matching polygon (or city) so the info box opens.
-  // The `place_id` format matches what getPolygonId produces, e.g. "country:Japan".
+  // Feed → friend activity. Tapping a place card like "Spencer added a post
+  // to Spain" loads Spencer's map, selects Spain, and opens his country
+  // activity page. Cities fall back to the old behavior (select city dot on
+  // the current user's map) since cities have no activity page.
   const handleNavigateToPlace = useCallback(
-    (placeId: string, placeType: string) => {
-      setActiveTab('globe');
-      setShowActivity(false);
+    async (userId: string, placeId: string, placeType: string) => {
       setViewingProfileId(null);
 
       if (placeType === 'city') {
+        setActiveTab('globe');
+        setShowActivity(false);
         const city = allCities.find((c) => c.id === placeId);
         if (city) {
           setSelectedId(city.id);
@@ -360,18 +375,46 @@ export default function App() {
         return;
       }
 
-      // Find the polygon by id match. We check both country and state lists
-      // since 'state:Texas' vs 'country:USA' use the same id-building scheme.
-      const allPolygons: GeoJsonFeature[] = [...countries, ...subdivisions];
-      const match = allPolygons.find((p) => getPolygonId(p) === placeId);
+      // Country/territory/state — open the friend's activity page.
+      // Mark a pending feed-nav BEFORE activeFriendId changes so the
+      // clear-on-friend-switch effect doesn't wipe the selection we're
+      // about to set. Await the load so we can set selection deterministically.
+      pendingFeedNavRef.current = { userId, placeId };
+      setActiveTab('globe');
+      setShowActivity(false);
+
+      if (activeFriendId !== userId) {
+        await loadFriendPlaces(userId);
+      }
+
+      const match = countries.find((p) => getPolygonId(p) === placeId);
       if (match) {
         setSelectedId(placeId);
         setSelectedFeature(match);
         setSelectedCity(null);
+        setActivityOrigin('feed');
+        setShowActivity(true);
       }
+      pendingFeedNavRef.current = null;
     },
-    [allCities, countries, subdivisions],
+    [allCities, countries, activeFriendId, loadFriendPlaces],
   );
+
+  // Close the activity page — returns to the origin. If opened from the
+  // feed, send the user back to the feed tab and clear friend + selection
+  // state so nothing bleeds through. If opened from the globe, just hide
+  // the page and keep the info box visible.
+  const handleCloseActivity = useCallback(() => {
+    setShowActivity(false);
+    if (activityOrigin === 'feed') {
+      setActiveTab('feed');
+      setSelectedId(null);
+      setSelectedFeature(null);
+      setSelectedCity(null);
+      clearFriend();
+      setActivityOrigin('globe');
+    }
+  }, [activityOrigin, clearFriend]);
 
   const handleClose = useCallback(() => {
     setSelectedId(null);
@@ -682,7 +725,10 @@ export default function App() {
               onRemoveVisited={() => {}}
               onUpdateDates={async () => false}
               onClose={handleClose}
-              onOpenActivity={() => setShowActivity(true)}
+              onOpenActivity={() => {
+                setActivityOrigin('globe');
+                setShowActivity(true);
+              }}
               friendViewMode={true}
               friendName={activeFriendName}
             />
@@ -696,7 +742,10 @@ export default function App() {
               onRemoveVisited={handleRemoveVisited}
               onUpdateDates={handleUpdateDates}
               onClose={handleClose}
-              onOpenActivity={() => setShowActivity(true)}
+              onOpenActivity={() => {
+                setActivityOrigin('globe');
+                setShowActivity(true);
+              }}
               isInBucketlist={isInBucketlist(selectedPlaceId)}
               onAddToBucketlist={() => addBucketlistItem(selectedPlaceType, selectedPlaceId, selectedPlaceName)}
               onRemoveFromBucketlist={() => removeBucketlistItem(selectedPlaceId)}
@@ -713,7 +762,7 @@ export default function App() {
             deleting={postsDeleting}
             readOnly={isFriendView}
             friendName={isFriendView ? activeFriendName : null}
-            onClose={() => setShowActivity(false)}
+            onClose={handleCloseActivity}
             onCreatePost={handleCreatePost}
             onDeletePost={deletePost}
           />

@@ -9,8 +9,10 @@ interface FeedTabProps {
   refreshing: boolean;
   followingCount: number;
   onRefresh: () => Promise<void> | void;
-  /** Called when user taps an activity that refers to a country/state/city */
-  onNavigateToPlace: (placeId: string, placeType: string) => void;
+  /** Called when user taps an activity that refers to a country/state/city.
+   *  Receives the posting user's id so the parent can open their friend
+   *  activity page (not the current user's map). */
+  onNavigateToPlace: (userId: string, placeId: string, placeType: string) => void;
   /** Called when user taps a friend's avatar or username to view their profile */
   onViewProfile: (userId: string) => void;
 }
@@ -151,7 +153,7 @@ export default function FeedTab({
       // Only navigate for activity types that reference a place on the globe
       if (!item.place_id || !item.place_type) return;
       if (item.activity_type === 'badge') return;
-      onNavigateToPlace(item.place_id, item.place_type);
+      onNavigateToPlace(item.user_id, item.place_id, item.place_type);
     },
     [onNavigateToPlace],
   );

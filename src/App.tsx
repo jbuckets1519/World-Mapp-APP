@@ -530,14 +530,16 @@ export default function App() {
     [createPost, logPost, selectedPlaceId, selectedPlaceName],
   );
 
-  // Mark visited — auto-creates (never auto-updates) the initial feed card
-  // for this place. Dates land in metadata so the card can display them.
+  // Mark visited — auto-creates the initial feed card so followers see it.
+  // Dates land in metadata so the card can display them.
   const handleMarkVisited = useCallback(async (
     dates?: { startDate: string | null; endDate: string | null },
   ): Promise<boolean> => {
+    console.log('[App] handleMarkVisited →', { selectedPlaceType, selectedPlaceId, selectedPlaceName });
     const ok = await markVisited(selectedPlaceType, selectedPlaceId, selectedPlaceName, '', dates);
     if (ok) {
-      upsertPlaceCard({
+      console.log('[App] markVisited succeeded — upserting feed card');
+      const feedOk = await upsertPlaceCard({
         placeId: selectedPlaceId,
         placeName: selectedPlaceName,
         placeType: selectedPlaceType,
@@ -547,6 +549,9 @@ export default function App() {
           ...(selectedCity ? { place_subtitle: selectedCity.country } : {}),
         },
       });
+      console.log('[App] upsertPlaceCard result:', feedOk);
+    } else {
+      console.log('[App] markVisited failed — skipping feed card');
     }
     return ok;
   }, [markVisited, upsertPlaceCard, selectedPlaceType, selectedPlaceId, selectedPlaceName, selectedCity]);

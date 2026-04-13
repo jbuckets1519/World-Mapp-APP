@@ -326,6 +326,9 @@ function FeedTab({
                 ? `updated ${relativeTime(item.updated_at)}`
                 : relativeTime(item.created_at);
 
+              // Card was bumped with photos → show "added a post to" phrasing
+              const hasPost = isBumped && photoUrls.length > 0;
+
               return (
                 <div
                   key={item.id}
@@ -340,13 +343,25 @@ function FeedTab({
                   <div style={styles.cardHeader}>
                     <Avatar profile={item.profile} onClick={handleProfileTap} />
                     <div style={styles.cardHeaderText}>
-                      <span role="button" style={styles.itemName} onClick={handleProfileTap}>
-                        {name}
-                      </span>
-                      <span style={styles.cardPlace}>
-                        {item.place_name ?? 'a place'}
-                        {subtitle && <span style={styles.cardSubtitle}>, {subtitle}</span>}
-                      </span>
+                      {hasPost ? (
+                        <p style={styles.postHeaderLine}>
+                          <span role="button" style={styles.itemName} onClick={handleProfileTap}>
+                            {name}
+                          </span>
+                          {' added a post to '}
+                          <span style={styles.postPlace}>{item.place_name ?? 'a place'}</span>
+                        </p>
+                      ) : (
+                        <>
+                          <span role="button" style={styles.itemName} onClick={handleProfileTap}>
+                            {name}
+                          </span>
+                          <span style={styles.cardPlace}>
+                            {item.place_name ?? 'a place'}
+                            {subtitle && <span style={styles.cardSubtitle}>, {subtitle}</span>}
+                          </span>
+                        </>
+                      )}
                       {dates && <span style={styles.cardDates}>{dates}</span>}
                     </div>
                   </div>

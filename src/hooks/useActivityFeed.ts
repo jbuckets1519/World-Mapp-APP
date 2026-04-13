@@ -279,6 +279,15 @@ export function useActivityFeed(
       return false;
     }
 
+    console.log('[ActivityFeed] upsertPlaceCard called →', {
+      placeId: params.placeId,
+      placeName: params.placeName,
+      placeType: params.placeType,
+      hasNotes: params.sharedNotes !== undefined,
+      hasAddPhoto: Boolean(params.addPhotoPath),
+      hasRemovePhoto: Boolean(params.removePhotoPath),
+      metadataKeys: params.metadataPatch ? Object.keys(params.metadataPatch) : [],
+    });
 
     const { data: existing, error: selErr } = await supabase
       .from('activity_feed')
@@ -293,11 +302,13 @@ export function useActivityFeed(
       return false;
     }
 
+    console.log('[ActivityFeed] existing card:', existing ? `found (id=${existing.id})` : 'none — will insert');
+
     const now = new Date().toISOString();
 
     if (!existing) {
       const initialPaths: string[] = params.addPhotoPath ? [params.addPhotoPath] : [];
-      const { error } = await supabase.from('activity_feed').insert({
+      const row = {
         user_id: userId,
         activity_type: 'visited',
         place_id: params.placeId,
@@ -308,11 +319,14 @@ export function useActivityFeed(
         shared_photo_urls: initialPaths,
         created_at: now,
         updated_at: now,
-      }).select().single();
+      };
+      console.log('[ActivityFeed] inserting new visited card →', row);
+      const { error } = await supabase.from('activity_feed').insert(row);
       if (error) {
         console.error('[ActivityFeed] insert ERROR:', error.message, error);
         return false;
       }
+      console.log('[ActivityFeed] insert OK');
       return true;
     }
 
@@ -347,38 +361,58 @@ export function useActivityFeed(
     }
     if (bump) update.updated_at = now;
 
+    console.log('[ActivityFeed] updating existing card →', { id: existing.id, bump, update });
     const { error } = await supabase
       .from('activity_feed')
       .update(update)
-      .eq('id', existing.id)
-      .select()
-      .single();
+      .eq('id', existing.id);
     if (error) {
       console.error('[ActivityFeed] update ERROR:', error.message, error);
       return false;
     }
+    console.log('[ActivityFeed] update OK');
     return true;
   }, [userId]);
 
   /**
-   * New-post activity row. Unlike `visited` cards, each post gets its OWN
-   * feed row (static, not bumped). Photos are stored as storage paths and
-   * signed at read time — same convention as the visited card.
+   * Log a new post to the feed. Updates the existing "visited" card for this
+   * place (adds photos, sets caption, bumps to top). If no visited card
+   * exists (user posted without marking visited), creates a new one.
    */
   const logPost = useCallback(async (params: LogPostParams) => {
     if (!userId || !isSupabaseConfigured) return;
-    const { error } = await supabase.from('activity_feed').insert({
-      user_id: userId,
-      activity_type: 'post',
-      place_id: params.placeId,
-      place_name: params.placeName,
-      place_type: params.placeType,
-      shared_notes: params.caption,
-      shared_photo_urls: params.photoPaths,
-      metadata: { post_id: params.postId },
+
+    console.log('[ActivityFeed] logPost called →', {
+      placeId: params.placeId,
+      placeName: params.placeName,
+      photoCount: params.photoPaths.length,
     });
-    if (error) console.error('[ActivityFeed] logPost ERROR:', error.message);
-  }, [userId]);
+
+    // Try to update the existing visited card for this place
+    const ok = await upsertPlaceCard({
+      placeId: params.placeId,
+      placeName: params.placeName,
+      placeType: params.placeType,
+      sharedNotes: params.caption,
+      addPhotoPath: params.photoPaths[0] ?? undefined,
+      metadataPatch: {
+        post_id: params.postId,
+        photo_count: params.photoPaths.length,
+      },
+    });
+
+    // If there are additional photos beyond the first, add them one by one
+    if (ok && params.photoPaths.length > 1) {
+      for (let i = 1; i < params.photoPaths.length; i++) {
+        await upsertPlaceCard({
+          placeId: params.placeId,
+          placeName: params.placeName,
+          placeType: params.placeType,
+          addPhotoPath: params.photoPaths[i],
+        });
+      }
+    }
+  }, [userId, upsertPlaceCard]);
 
   /**
    * Fetch the current user's own visited card for a given place. Used by the

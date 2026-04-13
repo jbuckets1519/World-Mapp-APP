@@ -295,7 +295,12 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-    background: 'linear-gradient(180deg, rgba(14, 12, 24, 1) 0%, rgba(8, 8, 18, 1) 350px)',
+    background: [
+      'radial-gradient(ellipse 70% 60% at 10% 15%, rgba(100,80,220,0.18) 0%, transparent 65%)',
+      'radial-gradient(ellipse 60% 50% at 85% 50%, rgba(140,60,180,0.12) 0%, transparent 60%)',
+      'radial-gradient(ellipse 55% 50% at 15% 85%, rgba(200,100,50,0.1) 0%, transparent 60%)',
+      'linear-gradient(165deg, #1e2248 0%, #161838 20%, #1a1640 40%, #1e1238 60%, #221035 80%, #1c0a22 100%)',
+    ].join(', '),
     zIndex: 5,
   },
   scrollArea: {
@@ -306,7 +311,6 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '480px',
     margin: '0 auto',
     animation: 'tabFadeIn 260ms ease-out',
-    background: 'linear-gradient(180deg, rgba(180, 130, 255, 0.03) 0%, transparent 200px)',
   },
 
   // --- Profile Header ---

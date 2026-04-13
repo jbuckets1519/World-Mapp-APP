@@ -218,7 +218,12 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-    background: 'linear-gradient(180deg, rgba(10, 16, 14, 1) 0%, rgba(8, 8, 18, 1) 350px)',
+    background: [
+      'radial-gradient(ellipse 70% 60% at 10% 15%, rgba(60,130,255,0.2) 0%, transparent 65%)',
+      'radial-gradient(ellipse 60% 50% at 85% 50%, rgba(100,70,210,0.12) 0%, transparent 60%)',
+      'radial-gradient(ellipse 55% 50% at 15% 85%, rgba(60,140,180,0.1) 0%, transparent 60%)',
+      'linear-gradient(165deg, #1a2e50 0%, #0e1e40 20%, #142242 40%, #151838 60%, #1a1232 80%, #150e22 100%)',
+    ].join(', '),
     zIndex: 5,
   },
   scrollArea: {
@@ -286,8 +291,11 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.85rem',
     borderRadius: '16px',
     marginBottom: '0.4rem',
-    background: 'rgba(255, 255, 255, 0.03)',
-    border: '1px solid rgba(255, 255, 255, 0.04)',
+    background: 'rgba(255, 255, 255, 0.07)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.15)',
   },
   userInfo: {
     flex: 1,

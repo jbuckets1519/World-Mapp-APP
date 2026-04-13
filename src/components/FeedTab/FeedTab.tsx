@@ -275,6 +275,7 @@ function FeedTab({
                       cursor: 'pointer',
                       borderColor: getContinentColor(item.place_name ?? '').primary,
                       background: getContinentColor(item.place_name ?? '').bg,
+                      boxShadow: `0 4px 20px ${getContinentColor(item.place_name ?? '').glow}`,
                     }}
                     onClick={() => handleItemClick(item)}
                     role="button"
@@ -351,6 +352,7 @@ function FeedTab({
                     cursor: clickable ? 'pointer' : 'default',
                     borderColor: getContinentColor(item.place_name ?? '').primary,
                     background: getContinentColor(item.place_name ?? '').bg,
+                    boxShadow: `0 4px 20px ${getContinentColor(item.place_name ?? '').glow}`,
                   }}
                   onClick={clickable ? () => handleItemClick(item) : undefined}
                   role={clickable ? 'button' : undefined}
@@ -422,7 +424,12 @@ const styles: Record<string, React.CSSProperties> = {
     left: 0,
     right: 0,
     bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
-    background: 'linear-gradient(180deg, rgba(12, 14, 28, 1) 0%, rgba(8, 8, 18, 1) 300px)',
+    background: [
+      'radial-gradient(ellipse 70% 60% at 10% 15%, rgba(80,140,255,0.18) 0%, transparent 65%)',
+      'radial-gradient(ellipse 60% 50% at 85% 50%, rgba(120,80,220,0.13) 0%, transparent 60%)',
+      'radial-gradient(ellipse 55% 50% at 15% 85%, rgba(200,100,50,0.09) 0%, transparent 60%)',
+      'linear-gradient(165deg, #1a2a4a 0%, #0f1f3d 20%, #162040 40%, #1a1535 60%, #201030 80%, #180a20 100%)',
+    ].join(', '),
     zIndex: 5,
   },
   scrollArea: {
@@ -497,11 +504,12 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'flex-start',
     gap: '0.85rem',
     padding: '0.9rem 1rem',
-    background: 'rgba(255, 255, 255, 0.045)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 255, 255, 0.07)',
+    background: 'rgba(255, 255, 255, 0.07)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
     borderRadius: '18px',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
   },
   avatar: {
     width: '40px',
@@ -555,9 +563,12 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column' as const,
     gap: '0.65rem',
     padding: '1rem 1.1rem 0.9rem',
-    background: 'rgba(255, 255, 255, 0.035)',
+    background: 'rgba(255, 255, 255, 0.07)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
     border: '2.5px solid rgba(255, 255, 255, 0.07)',
     borderRadius: '16px',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
   },
   cardHeader: {
     display: 'flex',

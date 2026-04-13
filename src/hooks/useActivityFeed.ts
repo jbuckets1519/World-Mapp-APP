@@ -297,7 +297,7 @@ export function useActivityFeed(
 
     if (!existing) {
       const initialPaths: string[] = params.addPhotoPath ? [params.addPhotoPath] : [];
-      const { data: inserted, error } = await supabase.from('activity_feed').insert({
+      const { error } = await supabase.from('activity_feed').insert({
         user_id: userId,
         activity_type: 'visited',
         place_id: params.placeId,
@@ -347,7 +347,7 @@ export function useActivityFeed(
     }
     if (bump) update.updated_at = now;
 
-    const { data: updated, error } = await supabase
+    const { error } = await supabase
       .from('activity_feed')
       .update(update)
       .eq('id', existing.id)

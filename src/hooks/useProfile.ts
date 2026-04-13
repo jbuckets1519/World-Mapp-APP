@@ -81,7 +81,7 @@ export function useProfile(userId: string | null) {
       const filePath = `${userId}/avatar.${ext}`;
 
       // Step 1: Upload to storage (overwrite if exists)
-      const { data: uploadData, error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
@@ -100,7 +100,7 @@ export function useProfile(userId: string | null) {
       const avatarUrl = urlData.publicUrl;
 
       // Step 3: Save URL to profiles table
-      const { data: updateData, error: updateErr } = await supabase
+      const { error: updateErr } = await supabase
         .from('profiles')
         .update({ avatar_url: avatarUrl })
         .eq('id', userId)

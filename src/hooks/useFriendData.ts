@@ -42,7 +42,7 @@ export function useFriendData() {
     setLoadingPlaces(true);
     setActiveFriendId(friendId);
 
-    const { data, error, status, statusText } = await supabase
+    const { data, error } = await supabase
       .from('visited_places')
       .select('*')
       .eq('user_id', friendId)

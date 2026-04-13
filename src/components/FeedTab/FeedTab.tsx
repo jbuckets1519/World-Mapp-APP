@@ -274,6 +274,7 @@ function FeedTab({
                       ...styles.card,
                       cursor: 'pointer',
                       borderColor: getContinentColor(item.place_name ?? '').primary,
+                      background: getContinentColor(item.place_name ?? '').bg,
                     }}
                     onClick={() => handleItemClick(item)}
                     role="button"
@@ -349,6 +350,7 @@ function FeedTab({
                     ...styles.card,
                     cursor: clickable ? 'pointer' : 'default',
                     borderColor: getContinentColor(item.place_name ?? '').primary,
+                    background: getContinentColor(item.place_name ?? '').bg,
                   }}
                   onClick={clickable ? () => handleItemClick(item) : undefined}
                   role={clickable ? 'button' : undefined}
@@ -554,7 +556,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.65rem',
     padding: '1rem 1.1rem 0.9rem',
     background: 'rgba(255, 255, 255, 0.035)',
-    border: '1px solid rgba(255, 255, 255, 0.07)',
+    border: '2.5px solid rgba(255, 255, 255, 0.07)',
     borderRadius: '16px',
   },
   cardHeader: {

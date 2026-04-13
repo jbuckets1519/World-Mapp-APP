@@ -210,6 +210,13 @@ function FeedTab({
         ) : (
           <div style={styles.list}>
             {feed.map((item) => {
+              console.log('[FeedTab] rendering item →', {
+                id: item.id,
+                type: item.activity_type,
+                place_name: item.place_name,
+                place_id: item.place_id,
+                user: item.profile?.username,
+              });
               const handleProfileTap = (e: React.MouseEvent) => {
                 e.stopPropagation();
                 onViewProfile(item.user_id);

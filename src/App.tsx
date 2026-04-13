@@ -614,9 +614,12 @@ export default function App() {
   }, [ownCountryCount, ownContinentCount, user, logBadge]);
 
   const handleRemoveVisited = useCallback(async () => {
+    console.log('[App] handleRemoveVisited →', { selectedPlaceType, selectedPlaceId });
     await removeVisited(selectedPlaceType, selectedPlaceId);
     // Remove the feed card so it disappears from followers' feeds
+    console.log('[App] removeVisited done — now deleting feed card for', selectedPlaceId);
     await deletePlaceCard(selectedPlaceId);
+    console.log('[App] deletePlaceCard done');
   }, [removeVisited, deletePlaceCard, selectedPlaceType, selectedPlaceId]);
 
   // Date edits keep the feed card's metadata in sync so the dates shown on

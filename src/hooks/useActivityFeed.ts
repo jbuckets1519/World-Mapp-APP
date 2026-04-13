@@ -454,18 +454,36 @@ export function useActivityFeed(
    */
   const deletePlaceCard = useCallback(
     async (placeId: string): Promise<void> => {
-      if (!userId || !isSupabaseConfigured) return;
-      console.log('[ActivityFeed] deletePlaceCard →', { placeId });
-      const { error } = await supabase
+      if (!userId || !isSupabaseConfigured) {
+        console.log('[ActivityFeed] deletePlaceCard skipped — no user or supabase');
+        return;
+      }
+      console.log('[ActivityFeed] deletePlaceCard →', { userId, placeId, activity_type: 'visited' });
+
+      // First verify the row exists so we can tell if delete silently matched nothing
+      const { data: existing, error: lookupErr } = await supabase
         .from('activity_feed')
-        .delete()
+        .select('id')
         .eq('user_id', userId)
         .eq('activity_type', 'visited')
-        .eq('place_id', placeId);
+        .eq('place_id', placeId)
+        .maybeSingle();
+
+      if (lookupErr) {
+        console.error('[ActivityFeed] deletePlaceCard lookup ERROR:', lookupErr.message, lookupErr);
+      }
+      console.log('[ActivityFeed] deletePlaceCard lookup result:', existing ? `found id=${existing.id}` : 'NO ROW FOUND');
+
+      if (!existing) return;
+
+      const { error, count } = await supabase
+        .from('activity_feed')
+        .delete()
+        .eq('id', existing.id);
       if (error) {
-        console.error('[ActivityFeed] deletePlaceCard ERROR:', error.message, error);
+        console.error('[ActivityFeed] deletePlaceCard DELETE ERROR:', error.message, error);
       } else {
-        console.log('[ActivityFeed] deletePlaceCard OK');
+        console.log('[ActivityFeed] deletePlaceCard DELETE OK, count:', count);
       }
     },
     [userId],

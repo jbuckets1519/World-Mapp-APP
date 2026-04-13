@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import { getPolygonId } from '../Globe/getPolygonId';
 import { isUNMember } from '../../data/un-members';
@@ -53,7 +53,7 @@ function getPolygonCentroid(feature: GeoJsonFeature): { lat: number; lng: number
     : { lat: 0, lng: 0 };
 }
 
-export default function SearchBar({
+function SearchBar({
   cities,
   polygons,
   onSelectCity,
@@ -407,3 +407,5 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.3,
   },
 };
+
+export default memo(SearchBar);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { memo, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import ReactGlobe, { type GlobeMethods } from 'react-globe.gl';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import { getPolygonId } from './getPolygonId';
@@ -270,8 +270,16 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
     const globe = globeRef.current;
     if (!globe) return;
     let rafId: number;
+    let skip = false;
     const DEG2RAD = Math.PI / 180;
     const cull = () => {
+      // Only cull on every other frame (~30fps) — city dots don't need
+      // 60fps visibility updates and this halves the math every second.
+      skip = !skip;
+      if (skip) {
+        rafId = requestAnimationFrame(cull);
+        return;
+      }
       const cam = globe.camera().position;
       // Camera direction as unit vector
       const camLen = Math.sqrt(cam.x * cam.x + cam.y * cam.y + cam.z * cam.z);
@@ -325,4 +333,7 @@ const GlobeComponent = forwardRef<GlobeHandle, GlobeProps>(function Globe({
   );
 });
 
-export default GlobeComponent;
+// memo avoids re-running the Globe wrapper when unrelated App state updates
+// push new renders down from the parent. All props are already stable
+// callbacks / memoized data structures, so shallow compare works correctly.
+export default memo(GlobeComponent);

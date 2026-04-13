@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import type { UserProfile, FollowRelation } from '../../types';
 import { TAB_BAR_HEIGHT } from '../Navigation';
 
@@ -15,7 +15,7 @@ interface FriendsTabProps {
   onViewProfile: (userId: string) => void;
 }
 
-export default function FriendsTab({
+function FriendsTab({
   following,
   followers,
   friendsLoading,
@@ -179,6 +179,8 @@ export default function FriendsTab({
     </div>
   );
 }
+
+export default memo(FriendsTab);
 
 const styles: Record<string, React.CSSProperties> = {
   container: {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { memo, useState, useRef, useEffect, useMemo } from 'react';
 import type { ProfileData } from '../../hooks/useProfile';
 import type { VisitedPlace } from '../../hooks/useTravelData';
 import TravelStats from '../Auth/TravelStats';
@@ -24,7 +24,7 @@ function countWords(text: string): number {
   return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 }
 
-export default function ProfileTab({
+function ProfileTab({
   profile,
   saving,
   places,
@@ -206,6 +206,8 @@ export default function ProfileTab({
     </div>
   );
 }
+
+export default memo(ProfileTab);
 
 const styles: Record<string, React.CSSProperties> = {
   container: {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 /**
@@ -126,13 +126,19 @@ export function useActivityFeed(
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Keep followingIds in a ref so `load` doesn't get a new identity every time
+  // the parent re-derives the array. The useEffect below detects real content
+  // changes and triggers a reload only then.
+  const followingRef = useRef(followingIds);
+  followingRef.current = followingIds;
+
   const load = useCallback(async (opts: { showSpinner?: boolean } = {}) => {
     if (!userId || !isSupabaseConfigured) {
       setFeed([]);
       return;
     }
     // Feed shows ONLY activity from users you follow.
-    const othersFollowed = followingIds.filter((id) => id !== userId);
+    const othersFollowed = followingRef.current.filter((id) => id !== userId);
     if (othersFollowed.length === 0) {
       setFeed([]);
       return;
@@ -214,11 +220,16 @@ export function useActivityFeed(
 
     setFeed(enriched as unknown as ActivityItem[]);
     setLoading(false);
-  }, [userId, followingIds]);
+  }, [userId]);
 
+  // Reload when followingIds content actually changes (not just reference)
+  const prevFollowingKey = useRef('');
   useEffect(() => {
-    load({ showSpinner: true });
-  }, [load]);
+    const key = followingIds.join(',');
+    if (key === prevFollowingKey.current) return;
+    prevFollowingKey.current = key;
+    load({ showSpinner: feed.length === 0 });
+  }, [followingIds, load, feed.length]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -268,14 +279,6 @@ export function useActivityFeed(
       return false;
     }
 
-    console.log('[ActivityFeed] upsertPlaceCard →', {
-      placeId: params.placeId,
-      placeName: params.placeName,
-      sharedNotes: params.sharedNotes === undefined ? '(unchanged)' : params.sharedNotes,
-      addPhotoPath: params.addPhotoPath,
-      removePhotoPath: params.removePhotoPath,
-      metadataPatch: params.metadataPatch,
-    });
 
     const { data: existing, error: selErr } = await supabase
       .from('activity_feed')
@@ -310,7 +313,6 @@ export function useActivityFeed(
         console.error('[ActivityFeed] insert ERROR:', error.message, error);
         return false;
       }
-      console.log('[ActivityFeed] inserted card', inserted?.id);
       return true;
     }
 
@@ -355,10 +357,6 @@ export function useActivityFeed(
       console.error('[ActivityFeed] update ERROR:', error.message, error);
       return false;
     }
-    console.log('[ActivityFeed] updated card', updated?.id, {
-      shared_notes: updated?.shared_notes,
-      shared_photo_urls: updated?.shared_photo_urls,
-    });
     return true;
   }, [userId]);
 
@@ -369,7 +367,6 @@ export function useActivityFeed(
    */
   const logPost = useCallback(async (params: LogPostParams) => {
     if (!userId || !isSupabaseConfigured) return;
-    console.log('[ActivityFeed] logPost →', params.postId);
     const { error } = await supabase.from('activity_feed').insert({
       user_id: userId,
       activity_type: 'post',

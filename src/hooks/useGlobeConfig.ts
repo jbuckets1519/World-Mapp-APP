@@ -145,7 +145,6 @@ export function useGlobeConfig() {
           const islands = data50m.features.filter(
             (f) => !names110m.has(f.properties.NAME as string),
           );
-          console.log(`[GlobeConfig] added ${islands.length} island nations from 50m`);
           setCountries([...base, ...islands]);
         } else {
           setCountries(base);
@@ -200,7 +199,6 @@ export function useGlobeConfig() {
           properties: { ...f.properties, NAME: (f.properties.name ?? f.properties.NAME ?? 'Lake') as string },
         }));
         setLakes(lakeFeatures);
-        console.log(`[GlobeConfig] loaded ${lakeFeatures.length} lakes`);
       })
       .catch((err) => {
         console.error('[GlobeConfig] lakes load ERROR:', err.message);
@@ -251,9 +249,7 @@ export function useGlobeConfig() {
         // Re-sort by scaleRank for tiering
         top300.sort((a, b) => a.scaleRank - b.scaleRank);
 
-        console.log(`[GlobeConfig] loaded ${top300.length} cities (300 + ${addedCapitals.length} missing-country capitals)`);
         if (addedCapitals.length > 0) {
-          console.log('[GlobeConfig] added capitals:', addedCapitals.join(', '));
         }
         setCities(top300);
       })

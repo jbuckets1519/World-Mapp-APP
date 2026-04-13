@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import type { GeoJsonFeature, CityPoint } from '../../types';
 import type { VisitedPlace, VisitDates } from '../../hooks/useTravelData';
 import CalendarPicker, { formatDateDisplay } from './CalendarPicker';
@@ -34,7 +34,7 @@ function formatVisitDates(start: string | null, end: string | null): string | nu
   return formatDateDisplay(start ?? end!);
 }
 
-export default function CountryPanel({
+function CountryPanel({
   country,
   city,
   visitedData,
@@ -441,3 +441,5 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(255, 255, 255, 0.35)', fontSize: '0.82rem', textAlign: 'center', margin: 0,
   },
 };
+
+export default memo(CountryPanel);

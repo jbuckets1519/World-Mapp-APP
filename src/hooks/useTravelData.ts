@@ -28,7 +28,6 @@ export interface VisitDates {
  * without it. Runs once per login; uses upsert to avoid duplicates.
  */
 async function ensureProfile(userId: string): Promise<boolean> {
-  console.log('[TravelData] ensureProfile — checking for', userId);
 
   // Try to read first (cheap, no write needed if it exists)
   const { data: existing, error: readErr } = await supabase
@@ -43,12 +42,10 @@ async function ensureProfile(userId: string): Promise<boolean> {
   }
 
   if (existing) {
-    console.log('[TravelData] ensureProfile — profile already exists');
     return true;
   }
 
   // Profile missing — create it
-  console.log('[TravelData] ensureProfile — creating profile row');
   const { error: insertErr } = await supabase
     .from('profiles')
     .insert({ id: userId });
@@ -58,7 +55,6 @@ async function ensureProfile(userId: string): Promise<boolean> {
     return false;
   }
 
-  console.log('[TravelData] ensureProfile — profile created OK');
   return true;
 }
 
@@ -83,7 +79,6 @@ export function useTravelData(userId: string | null) {
   // Fetch all visited places for the current user
   const loadPlaces = useCallback(async () => {
     if (!userId || !isSupabaseConfigured) {
-      console.log('[TravelData] loadPlaces skipped — userId:', userId, 'configured:', isSupabaseConfigured);
       return;
     }
     setLoading(true);
@@ -108,7 +103,6 @@ export function useTravelData(userId: string | null) {
     if (error) {
       console.error('[TravelData] loadPlaces ERROR:', error.message, error);
     } else {
-      console.log('[TravelData] loadPlaces OK — loaded', data?.length, 'places');
       setPlaces(data as VisitedPlace[]);
       setVersion((v) => v + 1);
     }
@@ -136,10 +130,8 @@ export function useTravelData(userId: string | null) {
       dates?: VisitDates,
     ): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) {
-        console.log('[TravelData] markVisited skipped — userId:', userId, 'configured:', isSupabaseConfigured);
         return false;
       }
-      console.log('[TravelData] markVisited →', { placeType, placeId, placeName, notes, dates, userId });
 
       // Check for an existing row (may have is_visited=false)
       const typesToCheck = (placeType === 'country' || placeType === 'territory')
@@ -191,7 +183,6 @@ export function useTravelData(userId: string | null) {
         console.error('[TravelData] markVisited ERROR:', error.message, error);
         return false;
       }
-      console.log('[TravelData] markVisited OK:', data);
       setPlaces((prev) => [data as VisitedPlace, ...prev]);
       setVersion((v) => v + 1);
       return true;
@@ -203,10 +194,8 @@ export function useTravelData(userId: string | null) {
   const removeVisited = useCallback(
     async (placeType: string, placeId: string) => {
       if (!userId || !isSupabaseConfigured) {
-        console.log('[TravelData] removeVisited skipped — userId:', userId);
         return;
       }
-      console.log('[TravelData] removeVisited →', { placeType, placeId });
       const isPolygon = placeType === 'country' || placeType === 'territory';
       let query = supabase
         .from('visited_places')
@@ -223,7 +212,6 @@ export function useTravelData(userId: string | null) {
         console.error('[TravelData] removeVisited ERROR:', error.message, error);
         return;
       }
-      console.log('[TravelData] removeVisited OK (is_visited → false)');
       const typesToCheck = isPolygon ? ['country', 'territory'] : [placeType];
       setPlaces((prev) =>
         prev.map((p) =>
@@ -242,10 +230,8 @@ export function useTravelData(userId: string | null) {
   const updateNotes = useCallback(
     async (placeType: string, placeId: string, notes: string): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) {
-        console.log('[TravelData] updateNotes skipped — userId:', userId);
         return false;
       }
-      console.log('[TravelData] updateNotes →', { placeType, placeId, notes });
       const isPolygon = placeType === 'country' || placeType === 'territory';
       let query = supabase
         .from('visited_places')
@@ -262,7 +248,6 @@ export function useTravelData(userId: string | null) {
         console.error('[TravelData] updateNotes ERROR:', error.message, error);
         return false;
       }
-      console.log('[TravelData] updateNotes OK — rows matched:', data?.length, data);
       if (!data || data.length === 0) {
         console.warn('[TravelData] updateNotes matched 0 rows — no row exists for this place. Was it marked as visited first?');
         return false;
@@ -324,7 +309,6 @@ export function useTravelData(userId: string | null) {
       const found = places.find(
         (p) => typesToCheck.includes(p.place_type) && p.place_id === placeId,
       );
-      console.log('[TravelData] getPlace →', { placeType, placeId }, '→', found ?? 'NOT FOUND', `(${places.length} places in memory)`);
       return found;
     },
     [places],

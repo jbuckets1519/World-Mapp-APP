@@ -14,9 +14,18 @@ import { BucketlistPanel } from './components/Bucketlist';
 import { AuthOverlay, ProfileView, ProfileSetup, PasswordReset } from './components/Auth';
 import { TabBar, TAB_BAR_HEIGHT } from './components/Navigation';
 import type { TabId } from './components/Navigation';
-import { ProfileTab } from './components/ProfileTab';
-import { FriendsTab } from './components/FriendsTab';
-import { FeedTab } from './components/FeedTab';
+// Tab chunks load on demand (first visit only) — keeps initial bundle small.
+// Once mounted they stay mounted (hidden via display:none) so re-visits are
+// instant and component state is preserved.
+const ProfileTab = lazy(() =>
+  import('./components/ProfileTab').then((m) => ({ default: m.ProfileTab })),
+);
+const FriendsTab = lazy(() =>
+  import('./components/FriendsTab').then((m) => ({ default: m.FriendsTab })),
+);
+const FeedTab = lazy(() =>
+  import('./components/FeedTab').then((m) => ({ default: m.FeedTab })),
+);
 import { useGlobeConfig } from './hooks/useGlobeConfig';
 import { useAuth } from './hooks/useAuth';
 import { useTravelData } from './hooks/useTravelData';
@@ -186,10 +195,15 @@ export default function App() {
   const [activityOrigin, setActivityOrigin] = useState<'globe' | 'feed'>('globe');
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('globe');
+  // Track which tabs have been visited so we can keep them mounted
+  // (display:none) instead of unmounting. Re-entering a visited tab is
+  // instant and its internal state (scroll position, form text) survives.
+  const [mountedTabs, setMountedTabs] = useState<Set<TabId>>(() => new Set(['globe']));
 
   // Clear overlays when switching tabs so nothing bleeds across views
   const handleTabChange = useCallback((tab: TabId) => {
     setActiveTab(tab);
+    setMountedTabs((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)));
     setViewingProfileId(null);
     setShowActivity(false);
   }, []);
@@ -221,10 +235,18 @@ export default function App() {
   });
 
   useEffect(() => {
-    const handleResize = () =>
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    let rafId = 0;
+    const handleResize = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      });
+    };
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const [showStates, setShowStates] = useState(false);
@@ -245,14 +267,18 @@ export default function App() {
     return 10;                       // all 300 cities
   }, [zoomLevel]);
 
+  // Threshold the island check to a boolean so visibleCities doesn't recalc
+  // on every single zoom tick — only when crossing the 90 boundary.
+  const showIslandCities = zoomLevel >= 90;
+
   const visibleCities = useMemo(() => {
     return allCities.filter((c) => {
       if (c.scaleRank > maxScaleRank) return false;
       // Hide small island nation dots at low zoom — they clutter the globe
-      if (zoomLevel < 90 && SMALL_ISLAND_NATIONS.has(c.country)) return false;
+      if (!showIslandCities && SMALL_ISLAND_NATIONS.has(c.country)) return false;
       return true;
     });
-  }, [allCities, maxScaleRank, zoomLevel]);
+  }, [allCities, maxScaleRank, showIslandCities]);
 
   const countriesOnly = useMemo(() => {
     if (countries.length === 0) return [];
@@ -670,8 +696,8 @@ export default function App() {
           onSelectPolygon={handleSearchSelectPolygon}
           onFlyTo={handleFlyTo}
           isInBucketlist={user ? isInBucketlist : undefined}
-          onAddToBucketlist={user ? (t, id, n) => { addBucketlistItem(t, id, n); } : undefined}
-          onRemoveFromBucketlist={user ? (id) => { removeBucketlistItem(id); } : undefined}
+          onAddToBucketlist={user ? addBucketlistItem : undefined}
+          onRemoveFromBucketlist={user ? removeBucketlistItem : undefined}
         />
 
         {/* "Back to My Map" banner when viewing a friend's map */}
@@ -769,44 +795,57 @@ export default function App() {
         )}
       </div>
 
-      {/* Friends tab */}
-      {activeTab === 'friends' && user && (
-        <FriendsTab
-          following={following}
-          followers={followers}
-          friendsLoading={friendsLoading}
-          onSearchUsers={searchUsers}
-          onFollow={follow}
-          onUnfollow={unfollow}
-          isFollowing={isFollowing}
-          onViewProfile={setViewingProfileId}
-        />
+      {/* Friends tab — mounted once on first visit, hidden thereafter so
+          switching back is instant and scroll/search state survives. */}
+      {user && mountedTabs.has('friends') && (
+        <div style={{ display: activeTab === 'friends' ? 'contents' : 'none' }}>
+          <Suspense fallback={null}>
+            <FriendsTab
+              following={following}
+              followers={followers}
+              friendsLoading={friendsLoading}
+              onSearchUsers={searchUsers}
+              onFollow={follow}
+              onUnfollow={unfollow}
+              isFollowing={isFollowing}
+              onViewProfile={setViewingProfileId}
+            />
+          </Suspense>
+        </div>
       )}
 
       {/* Feed tab */}
-      {activeTab === 'feed' && user && (
-        <FeedTab
-          feed={activityFeed}
-          loading={activityLoading}
-          refreshing={activityRefreshing}
-          followingCount={following.length}
-          onRefresh={refreshActivityFeed}
-          onNavigateToPlace={handleNavigateToPlace}
-          onViewProfile={setViewingProfileId}
-        />
+      {user && mountedTabs.has('feed') && (
+        <div style={{ display: activeTab === 'feed' ? 'contents' : 'none' }}>
+          <Suspense fallback={null}>
+            <FeedTab
+              feed={activityFeed}
+              loading={activityLoading}
+              refreshing={activityRefreshing}
+              followingCount={following.length}
+              onRefresh={refreshActivityFeed}
+              onNavigateToPlace={handleNavigateToPlace}
+              onViewProfile={setViewingProfileId}
+            />
+          </Suspense>
+        </div>
       )}
 
       {/* Profile tab */}
-      {activeTab === 'profile' && user && profile && (
-        <ProfileTab
-          profile={profile}
-          saving={profileSaving}
-          places={places}
-          totalPhotoCount={totalPhotoCount}
-          onSave={updateProfile}
-          onUploadAvatar={uploadAvatar}
-          onSignOut={signOut}
-        />
+      {user && profile && mountedTabs.has('profile') && (
+        <div style={{ display: activeTab === 'profile' ? 'contents' : 'none' }}>
+          <Suspense fallback={null}>
+            <ProfileTab
+              profile={profile}
+              saving={profileSaving}
+              places={places}
+              totalPhotoCount={totalPhotoCount}
+              onSave={updateProfile}
+              onUploadAvatar={uploadAvatar}
+              onSignOut={signOut}
+            />
+          </Suspense>
+        </div>
       )}
 
       {/* Password recovery overlay — shown when arriving from a reset link */}

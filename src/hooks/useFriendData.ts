@@ -42,14 +42,12 @@ export function useFriendData() {
     setLoadingPlaces(true);
     setActiveFriendId(friendId);
 
-    console.log('[FriendData] fetching visited_places for friend:', friendId);
     const { data, error, status, statusText } = await supabase
       .from('visited_places')
       .select('*')
       .eq('user_id', friendId)
       .order('visited_at', { ascending: false });
 
-    console.log('[FriendData] Supabase response:', { status, statusText, error, rowCount: data?.length ?? 0 });
 
     if (error) {
       console.error('[FriendData] loadFriendPlaces ERROR:', error.message, error.details, error.hint);
@@ -60,10 +58,7 @@ export function useFriendData() {
       const ids = new Set(places.filter((p) => p.is_visited !== false).map((p) => p.place_id));
       setFriendPlaces(places);
       setFriendVisitedIds(ids);
-      console.log('[FriendData] loaded', places.length, 'places for friend', friendId);
-      console.log('[FriendData] place_ids:', [...ids]);
       if (places.length > 0) {
-        console.log('[FriendData] sample row:', places[0]);
       }
     }
     // Also load their bucketlist

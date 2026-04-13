@@ -22,7 +22,7 @@ export default function UserIndicator({
       {/* Avatar / initial — click to edit profile */}
       <button style={styles.avatarBtn} onClick={onEditProfile} aria-label="Edit profile">
         {avatarUrl ? (
-          <img src={avatarUrl} alt="" style={styles.avatarImg} />
+          <img src={avatarUrl} alt="" style={styles.avatarImg} loading="lazy" decoding="async" />
         ) : (
           <span style={styles.avatarInitial}>{initial}</span>
         )}

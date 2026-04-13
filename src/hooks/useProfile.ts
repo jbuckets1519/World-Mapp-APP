@@ -79,14 +79,12 @@ export function useProfile(userId: string | null) {
 
       const ext = file.name.split('.').pop() ?? 'jpg';
       const filePath = `${userId}/avatar.${ext}`;
-      console.log('[Profile] avatar upload starting →', { filePath, fileName: file.name, fileSize: file.size, fileType: file.type });
 
       // Step 1: Upload to storage (overwrite if exists)
       const { data: uploadData, error: uploadErr } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
-      console.log('[Profile] storage upload response →', { data: uploadData, error: uploadErr });
 
       if (uploadErr) {
         console.error('[Profile] avatar upload ERROR:', uploadErr.message, uploadErr);
@@ -100,7 +98,6 @@ export function useProfile(userId: string | null) {
         .getPublicUrl(filePath);
 
       const avatarUrl = urlData.publicUrl;
-      console.log('[Profile] public URL →', avatarUrl);
 
       // Step 3: Save URL to profiles table
       const { data: updateData, error: updateErr } = await supabase
@@ -109,7 +106,6 @@ export function useProfile(userId: string | null) {
         .eq('id', userId)
         .select();
 
-      console.log('[Profile] profiles update response →', { data: updateData, error: updateErr });
 
       if (updateErr) {
         console.error('[Profile] avatar_url update ERROR:', updateErr.message, updateErr);
@@ -117,7 +113,6 @@ export function useProfile(userId: string | null) {
         return false;
       }
 
-      console.log('[Profile] avatar upload complete — updating local state');
       setProfile((prev) => prev ? { ...prev, avatar_url: avatarUrl } : prev);
       setSaving(false);
       return true;

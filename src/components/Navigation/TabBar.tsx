@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 export type TabId = 'globe' | 'friends' | 'feed' | 'profile';
 
 interface TabBarProps {
@@ -12,7 +14,7 @@ function tabColor(active: boolean): string {
   return active ? 'rgba(140, 200, 255, 1)' : 'rgba(255, 255, 255, 0.55)';
 }
 
-export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
+function TabBar({ activeTab, onTabChange }: TabBarProps) {
   const activeIndex = TABS.indexOf(activeTab);
   // Position the sliding dot indicator: each tab occupies 1/3 of the usable
   // width; the dot sits centered beneath the active tab's icon.
@@ -134,6 +136,8 @@ const TAB_BAR_HEIGHT = 42;
 
 // Export so other components can account for the tab bar height
 export { TAB_BAR_HEIGHT };
+
+export default memo(TabBar);
 
 const styles: Record<string, React.CSSProperties> = {
   bar: {

@@ -196,7 +196,6 @@ export function usePosts(userId: string | null) {
       }
 
       setCreating(true);
-      console.log('[Posts] createPost →', { placeId, placeName, count: files.length });
 
       const folder = sanitizePath(placeId);
       const uploadedPaths: string[] = [];
@@ -260,7 +259,6 @@ export function usePosts(userId: string | null) {
     async (post: Post): Promise<boolean> => {
       if (!userId || !isSupabaseConfigured) return false;
       setDeleting(true);
-      console.log('[Posts] delete', post.id);
 
       // Only remove storage files that are real paths (not legacy http URLs).
       const pathsToRemove = post.photo_paths.filter(

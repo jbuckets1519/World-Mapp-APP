@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { memo, useRef, useState, useCallback } from 'react';
 import type { ActivityItem } from '../../hooks/useActivityFeed';
 import { TAB_BAR_HEIGHT } from '../Navigation';
 import { Badge, resolveBadge } from '../Achievements/Achievements';
@@ -100,7 +100,7 @@ function Avatar({
   );
 }
 
-export default function FeedTab({
+function FeedTab({
   feed,
   loading,
   refreshing,
@@ -288,7 +288,7 @@ export default function FeedTab({
                       <div style={styles.cardThumbs}>
                         {postThumbs.map((url, i) => (
                           <div key={url + i} style={styles.cardThumbWrap}>
-                            <img src={url} alt="" style={styles.cardThumb} />
+                            <img src={url} alt="" style={styles.cardThumb} loading="lazy" decoding="async" />
                             {i === postThumbs.length - 1 && extraPost > 0 && (
                               <div style={styles.cardThumbOverlay}>+{extraPost}</div>
                             )}
@@ -362,7 +362,7 @@ export default function FeedTab({
                     <div style={styles.cardThumbs}>
                       {thumbUrls.map((url, i) => (
                         <div key={url + i} style={styles.cardThumbWrap}>
-                          <img src={url} alt="" style={styles.cardThumb} />
+                          <img src={url} alt="" style={styles.cardThumb} loading="lazy" decoding="async" />
                           {i === thumbUrls.length - 1 && extraPhotos > 0 && (
                             <div style={styles.cardThumbOverlay}>+{extraPhotos}</div>
                           )}
@@ -381,6 +381,8 @@ export default function FeedTab({
     </div>
   );
 }
+
+export default memo(FeedTab);
 
 const styles: Record<string, React.CSSProperties> = {
   container: {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import type { Post } from '../../hooks/usePosts';
 
 interface CountryActivityProps {
@@ -26,7 +26,7 @@ interface CountryActivityProps {
  *   • Post viewer — tap a thumb to open a swipeable photo overlay with caption
  *   • New-post sheet — file picker (1–20) + caption textarea + Post button
  */
-export default function CountryActivity({
+function CountryActivity({
   countryName,
   posts,
   loading,
@@ -106,7 +106,7 @@ export default function CountryActivity({
                   aria-label="Open post"
                 >
                   {thumb ? (
-                    <img src={thumb} alt="" style={styles.gridImg} />
+                    <img src={thumb} alt="" style={styles.gridImg} loading="lazy" decoding="async" />
                   ) : (
                     <div style={styles.gridPlaceholder}>?</div>
                   )}
@@ -176,6 +176,17 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
 
   const goPrev = () => setPhotoIndex((i) => Math.max(0, i - 1));
   const goNext = () => setPhotoIndex((i) => Math.min(urls.length - 1, i + 1));
+
+  // Preload the next two photos so swiping feels instant
+  useEffect(() => {
+    for (let offset = 1; offset <= 2; offset++) {
+      const nextIdx = photoIndex + offset;
+      if (nextIdx < urls.length) {
+        const img = new Image();
+        img.src = urls[nextIdx];
+      }
+    }
+  }, [photoIndex, urls]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -255,16 +266,23 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
                 transition: dragging ? 'none' : 'transform 260ms ease-out',
               }}
             >
-              {urls.map((url, i) => (
-                <div key={i} style={viewer.slide}>
-                  <img
-                    src={url}
-                    alt=""
-                    style={viewer.photo}
-                    draggable={false}
-                  />
-                </div>
-              ))}
+              {urls.map((url, i) => {
+                // Eager-load current + neighbors so swipes feel instant;
+                // lazy-load the rest so opening a 20-photo post isn't slow.
+                const near = Math.abs(i - photoIndex) <= 1;
+                return (
+                  <div key={i} style={viewer.slide}>
+                    <img
+                      src={url}
+                      alt=""
+                      style={viewer.photo}
+                      draggable={false}
+                      loading={near ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -381,7 +399,7 @@ function NewPostSheet({ countryName, creating, onClose, onSubmit }: NewPostSheet
             <div style={sheet.previewGrid}>
               {previews.map((url, i) => (
                 <div key={url} style={sheet.previewCell}>
-                  <img src={url} alt="" style={sheet.previewImg} />
+                  <img src={url} alt="" style={sheet.previewImg} loading="lazy" decoding="async" />
                   <button
                     style={sheet.previewRemove}
                     onClick={() => removeAt(i)}
@@ -839,3 +857,5 @@ const sheet: Record<string, React.CSSProperties> = {
     cursor: 'not-allowed',
   },
 };
+
+export default memo(CountryActivity);

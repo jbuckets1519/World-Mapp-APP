@@ -505,7 +505,12 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(0, 0, 0, 0.6)',
+    background: [
+      'radial-gradient(ellipse 70% 60% at 10% 15%, rgba(100,80,220,0.18) 0%, transparent 65%)',
+      'radial-gradient(ellipse 60% 50% at 85% 50%, rgba(140,60,180,0.12) 0%, transparent 60%)',
+      'radial-gradient(ellipse 55% 50% at 15% 85%, rgba(200,100,50,0.1) 0%, transparent 60%)',
+      'linear-gradient(165deg, #1e2248 0%, #161838 20%, #1a1640 40%, #1e1238 60%, #221035 80%, #1c0a22 100%)',
+    ].join(', '),
     zIndex: 30,
     boxSizing: 'border-box',
   },

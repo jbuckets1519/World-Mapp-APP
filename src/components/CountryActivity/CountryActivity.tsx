@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, memo } from 'react';
 import type { Post } from '../../hooks/usePosts';
+import { TAB_BAR_HEIGHT } from '../Navigation';
+import { PostInteractions, type PostInteractionsHandle } from '../PostInteractions';
 
 interface CountryActivityProps {
   countryName: string;
@@ -168,6 +170,37 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
   const wrapRef = useRef<HTMLDivElement>(null);
   const urls = post.photo_urls;
 
+  // Double-tap-to-heart state. The ref points at the shared PostInteractions
+  // component so we can imperatively fire `triggerHeart()` without turning
+  // reactions state into a prop. `burstKey` is bumped on each burst so the
+  // CSS animation restarts cleanly when the user double-taps repeatedly.
+  const interactionsRef = useRef<PostInteractionsHandle>(null);
+  const [burstKey, setBurstKey] = useState(0);
+  const lastTapRef = useRef<number>(0);
+
+  const fireHeartBurst = () => {
+    setBurstKey((k) => k + 1);
+    interactionsRef.current?.triggerHeart();
+  };
+  // Touch double-tap: two touchend events within 300ms
+  const handlePhotoTouchEnd = (e: React.TouchEvent) => {
+    // Let the swipe handler run first — it uses touchStartX/dragDx.
+    onTouchEnd();
+    // Only register a tap if finger didn't move significantly.
+    if (Math.abs(dragDx) > 8) {
+      lastTapRef.current = 0;
+      return;
+    }
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      e.preventDefault();
+      fireHeartBurst();
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
+
   useEffect(() => {
     setPhotoIndex(0);
     setDragDx(0);
@@ -249,8 +282,12 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
           style={viewer.photoWrap}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
+          onTouchEnd={handlePhotoTouchEnd}
           onTouchCancel={onTouchEnd}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            fireHeartBurst();
+          }}
         >
           {urls.length === 0 ? (
             <div style={viewer.missing}>Photo unavailable</div>
@@ -299,6 +336,22 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
               ))}
             </div>
           )}
+
+          {/* Double-tap heart burst overlay. `key` restarts the CSS animation
+              on every burst so rapid double-taps re-trigger cleanly. */}
+          {burstKey > 0 && (
+            <>
+              <style>{`@keyframes caHeartBurst {
+                0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+                30% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+                60% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+              }`}</style>
+              <span key={burstKey} style={viewer.heartBurst} aria-hidden>
+                ❤️
+              </span>
+            </>
+          )}
         </div>
 
         {post.caption && (
@@ -306,6 +359,8 @@ function PostViewer({ post, readOnly, deleting, onClose, onDelete }: PostViewerP
             <p style={viewer.caption}>{post.caption}</p>
           </div>
         )}
+
+        <PostInteractions ref={interactionsRef} postId={post.id} />
 
         {!readOnly && (
           <button
@@ -457,7 +512,8 @@ const styles: Record<string, React.CSSProperties> = {
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
+    // Stop above the bottom tab bar so tabs remain visible and tappable.
+    bottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
     background: [
       'radial-gradient(ellipse 70% 60% at 10% 15%, rgba(80,140,255,0.18) 0%, transparent 65%)',
       'radial-gradient(ellipse 60% 50% at 85% 50%, rgba(120,80,220,0.13) 0%, transparent 60%)',
@@ -614,6 +670,21 @@ const viewer: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     cursor: 'default',
     gap: '0.9rem',
+    // Reactions + comments can grow tall; let the whole column scroll
+    // inside the modal rather than overflowing the viewport.
+    overflowY: 'auto' as const,
+    paddingRight: '0.25rem',
+  },
+  // Big ❤️ centered over the photo for ~700ms after a double-tap.
+  heartBurst: {
+    position: 'absolute' as const,
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    fontSize: '6rem',
+    pointerEvents: 'none' as const,
+    animation: 'caHeartBurst 700ms ease-out forwards',
+    filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.55))',
   },
   // Fixed to the VIEWPORT, not the container — stays put regardless of
   // photo aspect ratio, caption length, or container layout.

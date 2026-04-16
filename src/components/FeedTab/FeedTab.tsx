@@ -3,6 +3,7 @@ import type { ActivityItem } from '../../hooks/useActivityFeed';
 import { TAB_BAR_HEIGHT } from '../Navigation';
 import { getContinentColor } from '../../data/continents';
 import { Badge, resolveBadge } from '../Achievements/Achievements';
+import { PostInteractions, type PostInteractionsHandle } from '../PostInteractions';
 
 interface FeedTabProps {
   feed: ActivityItem[];
@@ -101,6 +102,123 @@ function Avatar({
   );
 }
 
+// ─── Post card with reactions + comments ────────────────────────────
+//
+// Split out from the main render so each card can hold its own ref to
+// the shared PostInteractions component — the ref is what lets a
+// double-tap on the photos imperatively fire a heart reaction without
+// pushing reaction state up into this file.
+
+interface PostCardProps {
+  item: ActivityItem;
+  name: string;
+  onOpen: () => void;
+  onProfileTap: (e: React.MouseEvent) => void;
+}
+
+function PostCard({ item, name, onOpen, onProfileTap }: PostCardProps) {
+  const interactionsRef = useRef<PostInteractionsHandle>(null);
+  // `burstKey` restarts the CSS animation each double-tap; `lastTap` is
+  // for touch double-tap detection (no native dblclick on mobile).
+  const [burstKey, setBurstKey] = useState(0);
+  const lastTapRef = useRef<number>(0);
+
+  const postId = item.metadata?.post_id ?? null;
+
+  const fireHeart = () => {
+    setBurstKey((k) => k + 1);
+    interactionsRef.current?.triggerHeart();
+  };
+
+  const handlePhotoDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!postId) return;
+    fireHeart();
+  };
+  const handlePhotoTouchEnd = (e: React.TouchEvent) => {
+    if (!postId) return;
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      e.preventDefault();
+      e.stopPropagation();
+      fireHeart();
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
+
+  const rawCaption = item.shared_notes ?? '';
+  const hasCaption = rawCaption.trim().length > 0;
+  const truncatedCap = rawCaption.length > NOTES_PREVIEW_LIMIT;
+  const capPreview = truncatedCap
+    ? rawCaption.slice(0, NOTES_PREVIEW_LIMIT).trimEnd() + '…'
+    : rawCaption;
+  const postUrls = item.shared_photo_urls ?? [];
+  const postThumbs = postUrls.slice(0, 4);
+  const extraPost = Math.max(0, postUrls.length - postThumbs.length);
+
+  return (
+    <div
+      className="btn-press"
+      style={{
+        ...styles.card,
+        cursor: 'pointer',
+        borderColor: getContinentColor(item.place_name ?? '').primary,
+        background: getContinentColor(item.place_name ?? '').bg,
+        boxShadow: `0 4px 20px ${getContinentColor(item.place_name ?? '').glow}`,
+      }}
+      onClick={onOpen}
+      role="button"
+    >
+      <div style={styles.cardHeader}>
+        <Avatar profile={item.profile} onClick={onProfileTap} />
+        <div style={styles.cardHeaderText}>
+          <p style={styles.postHeaderLine}>
+            <span role="button" style={styles.itemName} onClick={onProfileTap}>
+              {name}
+            </span>
+            {' added a post to '}
+            <span style={styles.postPlace}>{item.place_name ?? 'a place'}</span>
+          </p>
+        </div>
+      </div>
+      {hasCaption && (
+        <p style={styles.cardNotes}>
+          {capPreview}
+          {truncatedCap && <span style={styles.cardReadMore}> read more</span>}
+        </p>
+      )}
+      {postThumbs.length > 0 && (
+        <div
+          style={styles.cardThumbsWrap}
+          onDoubleClick={handlePhotoDoubleClick}
+          onTouchEnd={handlePhotoTouchEnd}
+        >
+          <div style={styles.cardThumbs}>
+            {postThumbs.map((url, i) => (
+              <div key={url + i} style={styles.cardThumbWrap}>
+                <img src={url} alt="" style={styles.cardThumb} loading="lazy" decoding="async" />
+                {i === postThumbs.length - 1 && extraPost > 0 && (
+                  <div style={styles.cardThumbOverlay}>+{extraPost}</div>
+                )}
+              </div>
+            ))}
+          </div>
+          {burstKey > 0 && (
+            <span key={burstKey} style={styles.heartBurst} aria-hidden>
+              ❤️
+            </span>
+          )}
+        </div>
+      )}
+      <span style={styles.itemTime}>{relativeTime(item.created_at)}</span>
+
+      {postId && <PostInteractions ref={interactionsRef} postId={postId} compact />}
+    </div>
+  );
+}
+
 function FeedTab({
   feed,
   loading,
@@ -161,7 +279,15 @@ function FeedTab({
 
   return (
     <div style={styles.container}>
-      <style>{`@keyframes feedRefreshSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes feedRefreshSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes feedHeartBurst {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+          30% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+          60% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+      `}</style>
       <div
         ref={scrollRef}
         style={styles.scrollArea}
@@ -257,61 +383,14 @@ function FeedTab({
               // same normalizer used by visited cards applies. We only need
               // a different header to show the "added a post to" phrasing.
               if (item.activity_type === 'post') {
-                const rawCaption = item.shared_notes ?? '';
-                const hasCaption = rawCaption.trim().length > 0;
-                const truncatedCap = rawCaption.length > NOTES_PREVIEW_LIMIT;
-                const capPreview = truncatedCap
-                  ? rawCaption.slice(0, NOTES_PREVIEW_LIMIT).trimEnd() + '…'
-                  : rawCaption;
-                const postUrls = item.shared_photo_urls ?? [];
-                const postThumbs = postUrls.slice(0, 4);
-                const extraPost = Math.max(0, postUrls.length - postThumbs.length);
                 return (
-                  <div
+                  <PostCard
                     key={item.id}
-                    className="btn-press"
-                    style={{
-                      ...styles.card,
-                      cursor: 'pointer',
-                      borderColor: getContinentColor(item.place_name ?? '').primary,
-                      background: getContinentColor(item.place_name ?? '').bg,
-                      boxShadow: `0 4px 20px ${getContinentColor(item.place_name ?? '').glow}`,
-                    }}
-                    onClick={() => handleItemClick(item)}
-                    role="button"
-                  >
-                    <div style={styles.cardHeader}>
-                      <Avatar profile={item.profile} onClick={handleProfileTap} />
-                      <div style={styles.cardHeaderText}>
-                        <p style={styles.postHeaderLine}>
-                          <span role="button" style={styles.itemName} onClick={handleProfileTap}>
-                            {name}
-                          </span>
-                          {' added a post to '}
-                          <span style={styles.postPlace}>{item.place_name ?? 'a place'}</span>
-                        </p>
-                      </div>
-                    </div>
-                    {hasCaption && (
-                      <p style={styles.cardNotes}>
-                        {capPreview}
-                        {truncatedCap && <span style={styles.cardReadMore}> read more</span>}
-                      </p>
-                    )}
-                    {postThumbs.length > 0 && (
-                      <div style={styles.cardThumbs}>
-                        {postThumbs.map((url, i) => (
-                          <div key={url + i} style={styles.cardThumbWrap}>
-                            <img src={url} alt="" style={styles.cardThumb} loading="lazy" decoding="async" />
-                            {i === postThumbs.length - 1 && extraPost > 0 && (
-                              <div style={styles.cardThumbOverlay}>+{extraPost}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <span style={styles.itemTime}>{relativeTime(item.created_at)}</span>
-                  </div>
+                    item={item}
+                    name={name}
+                    onOpen={() => handleItemClick(item)}
+                    onProfileTap={handleProfileTap}
+                  />
                 );
               }
 
@@ -620,10 +699,23 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: 'rgba(255, 255, 255, 0.95)',
   },
+  cardThumbsWrap: {
+    position: 'relative' as const,
+  },
   cardThumbs: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '0.4rem',
+  },
+  heartBurst: {
+    position: 'absolute' as const,
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    fontSize: '4.5rem',
+    pointerEvents: 'none' as const,
+    animation: 'feedHeartBurst 700ms ease-out forwards',
+    filter: 'drop-shadow(0 6px 18px rgba(0,0,0,0.55))',
   },
   cardThumbWrap: {
     position: 'relative' as const,
